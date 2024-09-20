@@ -5,15 +5,16 @@ const {
   fetchAuthorizationRequests,
   fetchAuthorizationRequestById,
   fetchAuthorizationRequestsByEmployeeId,
-  updateAuthorizationRequestById,
   deleteAuthorizationRequestById,
+  updateAuthorizationRequestStatus,
 } = require("../controllers/authRequestsController");
+const { authenticate } = require("../middleware/authenticateToken");
 
 // Route to create a new authorization request
-router.post("/", addAuthorizationRequest);
+router.post("/", authenticate, addAuthorizationRequest);
 
 // Route to get all authorization requests
-router.get("/", fetchAuthorizationRequests);
+router.get("/", authenticate, fetchAuthorizationRequests);
 
 // Route to get an authorization request by ID
 router.get("/:id", fetchAuthorizationRequestById);
@@ -22,9 +23,9 @@ router.get("/:id", fetchAuthorizationRequestById);
 router.get("/employee/:employeeId", fetchAuthorizationRequestsByEmployeeId);
 
 // Route to update an authorization request by ID
-router.put("/:id", updateAuthorizationRequestById);
+router.patch("/:id", authenticate, updateAuthorizationRequestStatus);
 
 // Route to delete an authorization request by ID
-router.delete("/:id", deleteAuthorizationRequestById);
+router.delete("/:id", authenticate, deleteAuthorizationRequestById);
 
 module.exports = router;

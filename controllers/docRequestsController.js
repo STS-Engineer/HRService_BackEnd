@@ -23,7 +23,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
-
 const handleCreateDocumentRequest = async (req, res) => {
   const { employee_id, document_type } = req.body;
   try {

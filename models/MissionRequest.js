@@ -22,24 +22,38 @@ const createMissionRequest = async (data) => {
     missionBudget,
     purposeOfTravel,
     destination,
-    departureTime,
-    supervisorApproval,
-    status = "Pending", // Default status if not provided
+    status = "Pending",
+    manager_approval_status = "Pending",
+    plant_manager_approval_status = "Pending",
+    ceo_approval_status = "Pending",
   } = data;
 
   try {
     // Check if the employee exists
-    const exists = await employeeExists(employeeId);
-    if (!exists) {
+    const employeeRes = await pool.query("SELECT * FROM users WHERE id = $1", [
+      employeeId,
+    ]);
+    if (employeeRes.rows.length === 0) {
       throw new Error(`Employee with ID ${employeeId} does not exist.`);
+    }
+    const employee = employeeRes.rows[0];
+    let currentApproverId, nextApproverId;
+    if (employee.manager_id) {
+      currentApproverId = employee.manager_id;
+      nextApproverId = employee.plant_manager_id;
+    } else if (employee.plant_manager_id) {
+      currentApproverId = employee.plant_manager_id;
+      nextApproverId = null;
+    } else {
+      currentApproverId = employee.ceo_id;
+      nextApproverId = null;
     }
 
     const res = await pool.query(
       `INSERT INTO mission_requests (
-        employee_id, phone, start_date, end_date, mission_budget, purpose_of_travel, 
-        destination, departure_time, supervisor_approval, status, request_date
+        employee_id, phone, start_date, end_date, mission_budget, purpose_of_travel, destination, status, request_date,current_approver_id, next_approver_id,manager_approval_status, plant_manager_approval_status,ceo_approval_status
       ) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_DATE) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8,NOW(), $9, $10,$11,$12,$13) 
        RETURNING *`,
       [
         employeeId,
@@ -49,9 +63,12 @@ const createMissionRequest = async (data) => {
         missionBudget,
         purposeOfTravel,
         destination,
-        departureTime,
-        supervisorApproval,
         status,
+        currentApproverId,
+        nextApproverId,
+        manager_approval_status,
+        plant_manager_approval_status,
+        ceo_approval_status,
       ]
     );
     return res.rows[0];
@@ -61,7 +78,7 @@ const createMissionRequest = async (data) => {
 };
 
 // Fetch all mission requests with employee details
-const getMissionRequests = async () => {
+const getMissionRequests = async (approverId) => {
   try {
     const query = `
       SELECT 
@@ -72,10 +89,10 @@ const getMissionRequests = async () => {
         mr.mission_budget AS missionBudget,
         mr.purpose_of_travel AS purposeOfTravel,
         mr.destination,
-        mr.departure_time AS departureTime,
-        mr.supervisor_approval AS supervisorApproval,
         mr.status,
         mr.request_date AS requestDate,
+        mr.current_approver_id AS currentApproverId,
+        mr.next_approver_id AS nextApproverId,
         u.id AS employeeId,
         u.firstname AS firstName,
         u.lastname AS lastName,
@@ -83,9 +100,10 @@ const getMissionRequests = async () => {
         u.department
       FROM mission_requests mr
       JOIN users u ON mr.employee_id = u.id
+      WHERE mr.current_approver_id = $1
       ORDER BY mr.request_date DESC;
     `;
-    const res = await pool.query(query);
+    const res = await pool.query(query, [approverId]);
     return res.rows;
   } catch (error) {
     throw new Error(`Error fetching mission requests: ${error.message}`);
@@ -122,16 +140,64 @@ const getMissionRequestsByEmployeeId = async (employeeId) => {
 
 // Update a mission request by ID
 const updateMissionRequest = async (id, data) => {
-  const { status } = data;
+  const {
+    status,
+    manager_approval_status,
+    plant_manager_approval_status,
+    current_approver_id,
+  } = data;
 
   try {
-    const res = await pool.query(
-      `UPDATE mission_requests SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
-      [status, id]
-    );
+    const query = `
+      UPDATE mission_requests
+      SET
+        status = $1,
+        manager_approval_status = $2,
+        plant_manager_approval_status = $3,
+        current_approver_id = $4
+      WHERE id = $5
+      RETURNING *;
+    `;
+    const values = [
+      status,
+      manager_approval_status,
+      plant_manager_approval_status,
+      current_approver_id,
+      id,
+    ];
+
+    const res = await pool.query(query, values);
     return res.rows[0];
   } catch (error) {
-    throw new Error(`Error updating mission request: ${error.message}`);
+    throw new Error(`Error updating leave request: ${error.message}`);
+  }
+};
+const getAllMissionRequests = async () => {
+  try {
+    const query = `
+      SELECT 
+        mr.id AS requestId,
+        mr.phone,
+        mr.start_date AS startDate,
+        mr.end_date AS endDate,
+        mr.mission_budget AS missionBudget,
+        mr.purpose_of_travel AS purposeOfTravel,
+        mr.destination,
+        mr.status,
+        mr.request_date AS requestDate,
+        u.id AS employeeId,
+        u.firstname AS firstName,
+        u.lastname AS lastName,
+        u.function,
+        u.department
+      FROM mission_requests mr
+      JOIN users u ON mr.employee_id = u.id
+      ORDER BY mr.request_date DESC;
+    `;
+    const res = await pool.query(query);
+    return res.rows;
+  } catch (error) {
+    throw new Error(`Error fetching mission requests: ${error.message}`);
   }
 };
 
@@ -154,5 +220,6 @@ module.exports = {
   getMissionRequestById,
   getMissionRequestsByEmployeeId,
   updateMissionRequest,
+  getAllMissionRequests,
   deleteMissionRequest,
 };

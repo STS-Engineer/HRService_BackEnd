@@ -3,18 +3,21 @@ const router = express.Router();
 const {
   addMissionRequest,
   fetchMissionRequests,
+  fetchAllMissionRequests,
   fetchMissionRequestById,
   fetchMissionRequestsByEmployeeId,
   updateMissionRequestById,
   deleteMissionRequestById,
 } = require("../controllers/missionRequestsController");
+const { authenticate } = require("../middleware/authenticateToken");
 
 // Define routes for mission requests
-router.post("/", addMissionRequest);
-router.get("/", fetchMissionRequests);
+router.post("/", authenticate, addMissionRequest);
+router.get("/", authenticate, fetchMissionRequests);
+router.get("/all", fetchAllMissionRequests);
 router.get("/:id", fetchMissionRequestById);
 router.get("/employee/:employeeId", fetchMissionRequestsByEmployeeId);
-router.put("/:id", updateMissionRequestById);
-router.delete("/:id", deleteMissionRequestById);
+router.patch("/:id", authenticate, updateMissionRequestById);
+router.delete("/:id", authenticate, deleteMissionRequestById);
 
 module.exports = router;
