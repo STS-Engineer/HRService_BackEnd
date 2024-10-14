@@ -17,6 +17,9 @@ const getEmployeeById = async (employeeId) => {
 
 // Get all users (employees)
 const getAllUsers = async (req, res) => {
+  if (req.user.role !== "HRMANAGER") {
+    return res.status(403).json({ error: "Access denied" });
+  }
   try {
     const { rows } = await pool.query("SELECT * FROM users");
     res.status(200).json(rows);

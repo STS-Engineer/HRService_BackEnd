@@ -12,13 +12,13 @@ const {
 const { authenticate } = require("../middleware/authenticateToken");
 
 // Create a new document request
-router.post("/", handleCreateDocumentRequest);
+router.post("/", authenticate, handleCreateDocumentRequest);
 
 // Get all document requests (for managers)
 router.get("/", handleGetAllDocumentRequests);
 
 // Get document requests by employee ID
-router.get("/employee/:employee_id", handleGetDocumentRequestsByEmployee);
+router.get("/:employee_id", handleGetDocumentRequestsByEmployee);
 
 // Get a document request by ID
 router.get("/:id", handleDocumentRequestById);

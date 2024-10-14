@@ -159,6 +159,30 @@ const updateAuthorizationRequestStatus = async (req, res) => {
             "Your authorization request has been rejected by the Plant Manager."
           );
         }
+      } else if (
+        authorizationRequest.manager_approval_status === "Pending" &&
+        authorizationRequest.plant_manager_approval_status === "Pending"
+      ) {
+        authorizationRequest.plant_manager_approval_status = status;
+
+        if (status === "Approved") {
+          // If approved by Plant Manager, finalize status to Approved
+          authorizationRequest.status = "Approved";
+          authorizationRequest.current_approver_id = null;
+          await sendEmailNotification(
+            authorizationRequest.employee_id,
+            "Authorization Request Approved",
+            "Your authorization request has been approved by the Plant Manager."
+          );
+        } else {
+          // If rejected by Plant Manager, update status to Refused
+          authorizationRequest.status = "Rejected";
+          await sendEmailNotification(
+            authorizationRequest.employee_id,
+            "Authorization Request Rejected",
+            "Your authorization request has been rejected by the Plant Manager."
+          );
+        }
       }
     }
 
@@ -219,7 +243,8 @@ const deleteAuthorizationRequestById = async (req, res) => {
 
 const fetchAllAuthorizationRequests = async (req, res) => {
   try {
-    const AuthorizationRequests = await getAllAuthorizationRequests();
+    const { plant } = req.user;
+    const AuthorizationRequests = await getAllAuthorizationRequests(plant);
     res.status(200).json(AuthorizationRequests);
   } catch (error) {
     res.status(500).json({ error: error.message });

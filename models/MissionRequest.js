@@ -100,7 +100,7 @@ const getMissionRequests = async (approverId) => {
         u.department
       FROM mission_requests mr
       JOIN users u ON mr.employee_id = u.id
-      WHERE mr.current_approver_id = $1
+      WHERE mr.current_approver_id = $1 OR mr.next_approver_id = $1 
       ORDER BY mr.request_date DESC;
     `;
     const res = await pool.query(query, [approverId]);
@@ -144,6 +144,7 @@ const updateMissionRequest = async (id, data) => {
     status,
     manager_approval_status,
     plant_manager_approval_status,
+    ceo_approval_status,
     current_approver_id,
   } = data;
 
@@ -154,14 +155,16 @@ const updateMissionRequest = async (id, data) => {
         status = $1,
         manager_approval_status = $2,
         plant_manager_approval_status = $3,
-        current_approver_id = $4
-      WHERE id = $5
+        ceo_approval_status = $4,
+        current_approver_id = $5
+      WHERE id = $6
       RETURNING *;
     `;
     const values = [
       status,
       manager_approval_status,
       plant_manager_approval_status,
+      ceo_approval_status,
       current_approver_id,
       id,
     ];
@@ -172,7 +175,7 @@ const updateMissionRequest = async (id, data) => {
     throw new Error(`Error updating leave request: ${error.message}`);
   }
 };
-const getAllMissionRequests = async () => {
+const getAllMissionRequests = async (plant) => {
   try {
     const query = `
       SELECT 
@@ -189,12 +192,14 @@ const getAllMissionRequests = async () => {
         u.firstname AS firstName,
         u.lastname AS lastName,
         u.function,
-        u.department
+        u.department,
+        u.plant_connection as plant
       FROM mission_requests mr
       JOIN users u ON mr.employee_id = u.id
+      WHERE u.plant_connection = $1
       ORDER BY mr.request_date DESC;
     `;
-    const res = await pool.query(query);
+    const res = await pool.query(query, [plant]);
     return res.rows;
   } catch (error) {
     throw new Error(`Error fetching mission requests: ${error.message}`);

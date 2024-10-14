@@ -6,6 +6,8 @@ const {
   getLeaveRequestsByEmployeeId,
   updateLeaveRequest,
   deleteLeaveRequest,
+  getEmployeesWithHighLeavePercentageByYear,
+  getEmployeesWithHighLeavePercentageByMonth,
 } = require("../models/LeaveRequest");
 const {} = require("../models/UserModel");
 const fs = require("fs");
@@ -23,26 +25,25 @@ if (!fs.existsSync(uploadPath)) {
 // Configure Multer for file storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadPath); // Correct path
+    cb(null, uploadPath); // Use the uploadPath variable to set the destination
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
+    cb(null, Date.now() + "-" + file.originalname); // Rename the file
   },
 });
-
 const upload = multer({ storage });
 
-// Create a new leave request with file upload
 const addLeaveRequest = [
   upload.single("justificationFile"),
   async (req, res) => {
     try {
       const data = req.body;
-      console.log(" Uploaded file details (req.file):", req.file);
       if (req.file) {
         data.justificationFile = req.file.filename;
+      } else {
+        console.log("No file uploaded"); // Debugging file upload failure
       }
-
+      console.log(" Uploaded file details (req.file):", req.file);
       const employee = await getEmployeeById(data.employeeId);
       console.log(employee, "\n the employee information .");
       if (!employee) {
@@ -52,11 +53,19 @@ const addLeaveRequest = [
 
       // Notify the first approver
       const firstApproverId = newLeaveRequest.current_approver_id;
+      let attachments = [];
+      if (req.file) {
+        attachments.push({
+          filename: req.file.filename,
+          path: path.join(uploadPath, req.file.filename),
+        });
+      }
       if (firstApproverId) {
         await sendEmailNotification(
           firstApproverId,
           "Leave Request Approval Needed",
-          `A new leave request has been submitted by ${employee.firstname} ${employee.lastname}. Please review the request.`
+          `A new leave request has been submitted by ${employee.firstname} ${employee.lastname}. Please review the request.`,
+          attachments
         );
       }
       res.status(201).json(newLeaveRequest);
@@ -68,6 +77,9 @@ const addLeaveRequest = [
 // Get all leave requests
 const fetchLeaveRequests = async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: "Unauthorized access" });
+    }
     const approverId = req.user.id;
     const leaveRequests = await getLeaveRequests(approverId);
     res.status(200).json(leaveRequests);
@@ -77,9 +89,16 @@ const fetchLeaveRequests = async (req, res) => {
 };
 const fetchAllLeaveRequests = async (req, res) => {
   try {
-    const leaveRequests = await getAllLeaveRequests();
+    // Get the user's plant directly from req.user
+    const { plant } = req.user;
+
+    // Fetch leave requests filtered by the user's plant
+    const leaveRequests = await getAllLeaveRequests(plant);
+
+    // Send the response with the filtered leave requests
     res.status(200).json(leaveRequests);
   } catch (error) {
+    console.error("Error fetching leave requests:", error); // Log the error for debugging
     res.status(500).json({ error: error.message });
   }
 };
@@ -114,9 +133,6 @@ const updateLeaveRequestStatus = async (req, res) => {
   const id = parseInt(req.params.id); // Leave request ID
   const { status } = req.body; // Approval status (Approved or Rejected)
   const { role, id: userId } = req.user;
-
-  console.log("Current user ID:", userId);
-  console.log("Current user role:", role);
 
   try {
     // Fetch the leave request by ID
@@ -170,7 +186,7 @@ const updateLeaveRequestStatus = async (req, res) => {
       );
     }
 
-    // For Plant Manager role
+    // For Plant Manager role ()
     else if (role === "PLANT_MANAGER") {
       if (
         leaveRequest.manager_approval_status === "Approved" &&
@@ -283,6 +299,42 @@ const downloadJustificationFile = (req, res) => {
     }
   });
 };
+const getEmployeeLeavePercentage = async (req, res) => {
+  const employeeId = req.params.employeeId;
+
+  try {
+    const leaveData = await calculateLeavePercentage(employeeId);
+    res.status(200).json(leaveData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+const getHighLeavePercentageByMonth = async (req, res) => {
+  const { month, year } = req.params;
+
+  try {
+    const leavePercentage = await getEmployeesWithHighLeavePercentageByMonth(
+      month,
+      year
+    );
+    res.status(200).json(leavePercentage);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getHighLeavePercentageByYear = async (req, res) => {
+  const { year } = req.params;
+
+  try {
+    const leavePercentage = await getEmployeesWithHighLeavePercentageByYear(
+      year
+    );
+    res.status(200).json(leavePercentage);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 module.exports = {
   addLeaveRequest,
@@ -293,4 +345,6 @@ module.exports = {
   updateLeaveRequestStatus,
   removeLeaveRequest,
   downloadJustificationFile,
+  getHighLeavePercentageByMonth,
+  getHighLeavePercentageByYear,
 };

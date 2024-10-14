@@ -95,6 +95,7 @@ const getAuthorizationRequests = async (approverId) => {
         u.department
       FROM authorization_requests ar
       JOIN users u ON ar.employee_id = u.id
+      WHERE ar.current_approver_id = $1 OR ar.next_approver_id = $1 
       ORDER BY ar.created_at DESC;
     `;
     const res = await pool.query(query, [approverId]);
@@ -138,6 +139,7 @@ const updateAuthorizationRequest = async (id, data) => {
     status,
     manager_approval_status,
     plant_manager_approval_status,
+    ceo_approval_status,
     current_approver_id,
   } = data;
 
@@ -148,14 +150,16 @@ const updateAuthorizationRequest = async (id, data) => {
         status = $1,
         manager_approval_status = $2,
         plant_manager_approval_status = $3,
-        current_approver_id = $4
-      WHERE id = $5
+        ceo_approval_status = $4,
+        current_approver_id = $5
+      WHERE id = $6
       RETURNING *;
     `;
     const values = [
       status,
       manager_approval_status,
       plant_manager_approval_status,
+      ceo_approval_status,
       current_approver_id,
       id,
     ];
@@ -180,7 +184,7 @@ const deleteAuthorizationRequest = async (id) => {
   }
 };
 
-const getAllAuthorizationRequests = async () => {
+const getAllAuthorizationRequests = async (plant) => {
   try {
     const query = `
       SELECT 
@@ -196,12 +200,14 @@ const getAllAuthorizationRequests = async () => {
         u.firstname AS firstName,
         u.lastname AS lastName,
         u.function,
-        u.department
+        u.department,
+        u.plant_connection AS plant
       FROM authorization_requests ar
       JOIN users u ON ar.employee_id = u.id
+      WHERE u.plant_connection = $1
       ORDER BY ar.created_at DESC;
     `;
-    const res = await pool.query(query);
+    const res = await pool.query(query, [plant]);
     return res.rows;
   } catch (error) {
     throw new Error(

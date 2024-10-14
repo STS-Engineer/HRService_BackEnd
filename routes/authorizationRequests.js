@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   addAuthorizationRequest,
   fetchAuthorizationRequests,
+  fetchAllAuthorizationRequests,
   fetchAuthorizationRequestById,
   fetchAuthorizationRequestsByEmployeeId,
   deleteAuthorizationRequestById,
@@ -13,8 +14,11 @@ const { authenticate } = require("../middleware/authenticateToken");
 // Route to create a new authorization request
 router.post("/", authenticate, addAuthorizationRequest);
 
-// Route to get all authorization requests
+// Route to get authorization requests
 router.get("/", authenticate, fetchAuthorizationRequests);
+
+// Route to fetch all authorization requests
+router.get("/all", authenticate, fetchAllAuthorizationRequests);
 
 // Route to get an authorization request by ID
 router.get("/:id", fetchAuthorizationRequestById);

@@ -13,6 +13,23 @@ const getUsers = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+const getEmployeesByPlant = async (req, res) => {
+  try {
+    const { plant } = req.user;
+
+    // Fetch employees that belong to the given plant connection
+    const { rows } = await pool.query(
+      "SELECT * FROM users WHERE plant_connection = $1",
+      [plant]
+    );
+
+    // Send the filtered employees as the response
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching employees by plant connection:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
 
 const getUserById = async (req, res) => {
   const { id } = req.params;
@@ -39,6 +56,7 @@ const registerUser = async (req, res) => {
     email,
     password,
     role,
+    plant_connection,
   } = req.body;
 
   try {
@@ -61,8 +79,8 @@ const registerUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
-      `INSERT INTO users (firstname, lastname, function, department, email, password, role)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      `INSERT INTO users (firstname, lastname, function, department, email, password, role, plant_connection)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       [
         firstname,
         lastname,
@@ -71,6 +89,7 @@ const registerUser = async (req, res) => {
         email,
         hashedPassword,
         role,
+        plant_connection,
       ]
     );
 
@@ -81,26 +100,57 @@ const registerUser = async (req, res) => {
   }
 };
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, plant_connection } = req.body;
+
   try {
     const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [
       email,
     ]);
+
+    // Log the query result for debugging
+    console.log("Query result:", rows);
+
+    // Check if the user exists
     if (rows.length === 0) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
+
+    // Adjust based on the correct column name
+    const userPlant = rows[0].plant || rows[0].plant_connection;
+    console.log("User plant from DB:", userPlant);
+
+    // Ensure plant exists in the returned user object
+    if (!userPlant) {
+      return res
+        .status(401)
+        .json({ error: "User not found or no plant assigned." });
+    }
+
     const isMatch = await bcrypt.compare(password, rows[0].password);
     if (!isMatch) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
+
+    // Log both values to see what's being compared
+    console.log("Requested plant connection:", plant_connection);
+
+    // Case-insensitive comparison
+    if (userPlant.toLowerCase() !== plant_connection.toLowerCase()) {
+      return res
+        .status(403)
+        .json({ error: "Unauthorized access to this plant." });
+    }
+
     const payload = {
       user: {
         id: rows[0].id,
         email: rows[0].email,
         role: rows[0].role,
+        plant: userPlant,
       },
     };
-    jwt.sign(payload, "jwtSecret", { expiresIn: "8h" }, (err, token) => {
+
+    jwt.sign(payload, "jwtSecret", { expiresIn: "10h" }, (err, token) => {
       if (err) throw err;
       res.json({ token, user: payload.user });
     });
@@ -109,6 +159,7 @@ const loginUser = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 const updateUser = async (req, res) => {
   const { id } = req.params;
   const {
@@ -118,14 +169,26 @@ const updateUser = async (req, res) => {
     department,
     email,
     role,
+    plant_connection,
   } = req.body;
+
+  console.log(id, req.body);
 
   try {
     const { rows } = await pool.query(
       `UPDATE users 
-       SET firstname = $1, lastname = $2, function = $3, department = $4, email = $5, role = $6 
-       WHERE id = $7 RETURNING *`,
-      [firstname, lastname, userFunction, department, email, role, id]
+       SET firstname = $1, lastname = $2, function = $3, department = $4, email = $5, role = $6 ,  plant_connection = $7
+       WHERE id = $8 RETURNING *`,
+      [
+        firstname,
+        lastname,
+        userFunction,
+        department,
+        email,
+        role,
+        plant_connection,
+        id,
+      ]
     );
 
     if (rows.length === 0) {
@@ -254,14 +317,60 @@ const updatePassword = async (req, res) => {
     res.status(500).json({ message: "Server error. Please try again later." });
   }
 };
+const updateUserDetails = async (req, res) => {
+  const { id } = req.params;
+  const {
+    firstname,
+    lastname,
+    function: userFunction,
+    department,
+    email,
+    role,
+    plant_connection,
+  } = req.body;
+  const loggedInUserId = req.user.id;
+  const loggedInUserRole = req.user.role;
+  try {
+    // Verify that the logged-in user is an HR Manager
+    if (loggedInUserRole !== "HR Manager") {
+      return res.status(403).json({ message: "Access denied." });
+    }
+
+    // Proceed with updating employee's information
+    await pool.query(
+      `UPDATE users 
+       SET firstname = $1, lastname = $2, function = $3, department = $4, email = $5, role = $6 ,  plant_connection = $7
+       WHERE id = $8 RETURNING *`,
+      [
+        firstname,
+        lastname,
+        userFunction,
+        department,
+        email,
+        role,
+        plant_connection,
+        id,
+      ]
+    );
+
+    res
+      .status(200)
+      .json({ message: "Employee information updated successfully." });
+  } catch (error) {
+    console.error("Error updating employee:", error);
+    res.status(500).json({ message: "Server error. Please try again later." });
+  }
+};
 
 module.exports = {
   registerUser,
   getUsers,
+  getEmployeesByPlant,
   loginUser,
   getUserById,
   updateUser,
   uploadProfilePhoto,
   getProfilePhoto,
   updatePassword,
+  updateUserDetails,
 };

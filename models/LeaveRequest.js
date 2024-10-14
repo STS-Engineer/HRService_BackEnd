@@ -101,7 +101,7 @@ const getLeaveRequests = async (approverId) => {
         lr.next_approver_id AS nextApproverId
       FROM leave_requests lr
       JOIN users u ON lr.employee_id = u.id
-      WHERE lr.current_approver_id =  $1
+      WHERE lr.current_approver_id = $1 OR lr.next_approver_id = $1
       ORDER BY lr.created_at DESC;
     `;
     const res = await pool.query(query, [approverId]);
@@ -110,7 +110,7 @@ const getLeaveRequests = async (approverId) => {
     throw new Error(`Error fetching leave requests: ${error.message}`);
   }
 };
-const getAllLeaveRequests = async () => {
+const getAllLeaveRequests = async (plant) => {
   try {
     const query = `
       SELECT 
@@ -127,17 +127,21 @@ const getAllLeaveRequests = async () => {
         u.firstname AS firstName,
         u.lastname AS lastName,
         u.function,
-        u.department
+        u.department,
+        u.plant_connection AS plant
       FROM leave_requests lr
       JOIN users u ON lr.employee_id = u.id
+      WHERE u.plant_connection = $1 -- Filter by plant
       ORDER BY lr.created_at DESC;
     `;
-    const res = await pool.query(query);
+
+    const res = await pool.query(query, [plant]); // Pass plant as a parameter
     return res.rows;
   } catch (error) {
     throw new Error(`Error fetching leave requests: ${error.message}`);
   }
 };
+
 // Fetch a leave request by ID
 const getLeaveRequestById = async (id) => {
   try {
@@ -168,6 +172,7 @@ const updateLeaveRequest = async (id, data) => {
     status,
     manager_approval_status,
     plant_manager_approval_status,
+    ceo_approval_status,
     current_approver_id,
   } = data;
 
@@ -178,14 +183,16 @@ const updateLeaveRequest = async (id, data) => {
         status = $1,
         manager_approval_status = $2,
         plant_manager_approval_status = $3,
-        current_approver_id = $4
-      WHERE id = $5
+        ceo_approval_status = $4,
+        current_approver_id = $5
+      WHERE id = $6
       RETURNING *;
     `;
     const values = [
       status,
       manager_approval_status,
       plant_manager_approval_status,
+      ceo_approval_status,
       current_approver_id,
       id,
     ];
@@ -209,6 +216,146 @@ const deleteLeaveRequest = async (id) => {
     throw new Error(`Error deleting leave request: ${error.message}`);
   }
 };
+const calculateLeavePercentage = async (employeeId) => {
+  try {
+    // Fetch total allocated leave days for the employee
+    const totalLeaveDaysQuery = `
+      SELECT total_leave_days 
+      FROM leave_types 
+      WHERE employee_id = $1
+    `;
+    const totalLeaveDaysResult = await pool.query(totalLeaveDaysQuery, [
+      employeeId,
+    ]);
+    const totalLeaveDays = totalLeaveDaysResult.rows[0]?.total_leave_days || 0;
+
+    // Fetch leave requests for the employee
+    const leaveRequestsQuery = `
+      SELECT start_date, end_date 
+      FROM leave_requests 
+      WHERE employee_id = $1 AND status = 'Approved'
+    `;
+    const leaveRequestsResult = await pool.query(leaveRequestsQuery, [
+      employeeId,
+    ]);
+    const leaveRequests = leaveRequestsResult.rows;
+
+    // Calculate total leave days taken
+    let totalLeaveTaken = 0;
+    leaveRequests.forEach((request) => {
+      const startDate = new Date(request.start_date);
+      const endDate = new Date(request.end_date);
+      const daysTaken =
+        Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1; // +1 to include start date
+      totalLeaveTaken += daysTaken;
+    });
+
+    // Calculate leave percentage
+    const leavePercentage =
+      totalLeaveDays > 0 ? (totalLeaveTaken / totalLeaveDays) * 100 : 0;
+
+    return {
+      totalLeaveDays,
+      totalLeaveTaken,
+      leavePercentage: leavePercentage.toFixed(2), // Fixed to two decimal places
+    };
+  } catch (error) {
+    throw new Error(`Error calculating leave percentage: ${error.message}`);
+  }
+};
+// Fetch percentage of employees with a lot of leave requests in a given month
+const getEmployeesWithHighLeavePercentageByMonth = async (
+  month,
+  year,
+  threshold = 5
+) => {
+  try {
+    // Step 1: Count total number of employees
+    const totalEmployeesResult = await pool.query(
+      "SELECT COUNT(*) AS total FROM users"
+    );
+    const totalEmployees = parseInt(totalEmployeesResult.rows[0].total, 10);
+
+    // Step 2: Count employees with more than `threshold` leave requests in the specified month and year
+    const highLeaveResult = await pool.query(
+      `
+      SELECT COUNT(DISTINCT employee_id) AS highLeaveEmployees
+      FROM leave_requests
+      WHERE EXTRACT(MONTH FROM start_date) = $1 
+        AND EXTRACT(YEAR FROM start_date) = $2
+        AND status = 'Approved'
+      GROUP BY employee_id
+      HAVING COUNT(*) > $3
+    `,
+      [month, year, threshold]
+    );
+
+    const highLeaveEmployees = parseInt(
+      highLeaveResult.rows[0]?.highleaveemployees || 0,
+      10
+    );
+
+    // Step 3: Calculate the percentage
+    const percentage =
+      totalEmployees > 0 ? (highLeaveEmployees / totalEmployees) * 100 : 0;
+
+    return {
+      totalEmployees,
+      highLeaveEmployees,
+      percentage: percentage.toFixed(2), // Rounded to two decimal places
+    };
+  } catch (error) {
+    throw new Error(
+      `Error calculating high leave percentage for month: ${error.message}`
+    );
+  }
+};
+
+// Fetch percentage of employees with a lot of leave requests in a year
+const getEmployeesWithHighLeavePercentageByYear = async (
+  year,
+  threshold = 12
+) => {
+  try {
+    // Step 1: Count total number of employees
+    const totalEmployeesResult = await pool.query(
+      "SELECT COUNT(*) AS total FROM users"
+    );
+    const totalEmployees = parseInt(totalEmployeesResult.rows[0].total, 10);
+
+    // Step 2: Count employees with more than `threshold` leave requests in the specified year
+    const highLeaveResult = await pool.query(
+      `
+      SELECT COUNT(DISTINCT employee_id) AS highLeaveEmployees
+      FROM leave_requests
+      WHERE EXTRACT(YEAR FROM start_date) = $1 
+        AND status = 'Approved'
+      GROUP BY employee_id
+      HAVING COUNT(*) > $2
+    `,
+      [year, threshold]
+    );
+
+    const highLeaveEmployees = parseInt(
+      highLeaveResult.rows[0]?.highleaveemployees || 0,
+      10
+    );
+
+    // Step 3: Calculate the percentage
+    const percentage =
+      totalEmployees > 0 ? (highLeaveEmployees / totalEmployees) * 100 : 0;
+
+    return {
+      totalEmployees,
+      highLeaveEmployees,
+      percentage: percentage.toFixed(2),
+    };
+  } catch (error) {
+    throw new Error(
+      `Error calculating high leave percentage for year: ${error.message}`
+    );
+  }
+};
 
 module.exports = {
   createLeaveRequest,
@@ -218,4 +365,7 @@ module.exports = {
   updateLeaveRequest,
   deleteLeaveRequest,
   getAllLeaveRequests,
+  calculateLeavePercentage,
+  getEmployeesWithHighLeavePercentageByYear,
+  getEmployeesWithHighLeavePercentageByMonth,
 };

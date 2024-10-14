@@ -81,9 +81,6 @@ const updateMissionRequestById = async (req, res) => {
   const { status } = req.body; // Extract status from request body
   const { role, id: userId } = req.user;
 
-  console.log("Current user ID:", userId);
-  console.log("Current user role:", role);
-
   try {
     // Fetch the mission request by ID
     const missionRequest = await getMissionRequestById(id);
@@ -161,6 +158,30 @@ const updateMissionRequestById = async (req, res) => {
             "Your mission request has been rejected by the Plant Manager."
           );
         }
+      } else if (
+        missionRequest.manager_approval_status === "Pending" &&
+        missionRequest.plant_manager_approval_status === "Pending"
+      ) {
+        missionRequest.plant_manager_approval_status = status;
+
+        if (status === "Approved") {
+          // If approved by Plant Manager, finalize status to Approved
+          missionRequest.status = "Approved";
+          missionRequest.current_approver_id = null;
+          await sendEmailNotification(
+            missionRequest.employee_id,
+            "Mission Request Approved",
+            "Your mission request has been approved by the Plant Manager."
+          );
+        } else {
+          // If rejected by Plant Manager, update status to Refused
+          missionRequest.status = "Rejected";
+          await sendEmailNotification(
+            missionRequest.employee_id,
+            "Mission Request Rejected",
+            "Your mission request has been rejected by the Plant Manager."
+          );
+        }
       }
     }
 
@@ -206,7 +227,10 @@ const updateMissionRequestById = async (req, res) => {
 };
 const fetchAllMissionRequests = async (req, res) => {
   try {
-    const missionRequests = await getAllMissionRequests();
+    // Get the user's plant directly from req.user
+    const { plant } = req.user;
+
+    const missionRequests = await getAllMissionRequests(plant);
     res.status(200).json(missionRequests);
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -2,6 +2,7 @@ const {
   createDocumentRequest,
   getDocumentRequestsByEmployee,
   getAllDocumentRequests,
+  getDocumentRequests,
   getDocumentRequestById,
   uploadDocument,
   deleteDocumentRequest,
@@ -10,6 +11,8 @@ const {
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { sendEmailNotification } = require("../services/emailService");
+const { getEmployeeById } = require("./UserController");
 
 // Configure Multer for file storage
 const storage = multer.diskStorage({
@@ -23,6 +26,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
 const handleCreateDocumentRequest = async (req, res) => {
   const { employee_id, document_type } = req.body;
   try {
@@ -31,7 +35,18 @@ const handleCreateDocumentRequest = async (req, res) => {
         .status(400)
         .json({ error: "Employee ID and Document Type are required" });
     }
-    const request = await createDocumentRequest(employee_id, document_type);
+    const request = await createDocumentRequest(
+      employee_id,
+      document_type,
+      req
+    );
+    if (request.next_approver_id) {
+      await sendEmailNotification(
+        request.next_approver_id,
+        "New Document Request",
+        "A new document request has been submitted needs your approval . Please review the request."
+      );
+    }
     res.status(201).json(request);
   } catch (error) {
     res.status(500).json({ error: error.message });

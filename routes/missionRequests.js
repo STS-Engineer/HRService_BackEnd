@@ -14,7 +14,7 @@ const { authenticate } = require("../middleware/authenticateToken");
 // Define routes for mission requests
 router.post("/", authenticate, addMissionRequest);
 router.get("/", authenticate, fetchMissionRequests);
-router.get("/all", fetchAllMissionRequests);
+router.get("/all", authenticate, fetchAllMissionRequests);
 router.get("/:id", fetchMissionRequestById);
 router.get("/employee/:employeeId", fetchMissionRequestsByEmployeeId);
 router.patch("/:id", authenticate, updateMissionRequestById);

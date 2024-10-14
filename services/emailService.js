@@ -1,25 +1,74 @@
+const fs = require("fs"); // Add this line
 const nodemailer = require("nodemailer");
 const pool = require("../config/database");
 
-// Configure Nodemailer transporter
+//Configure Nodemailer transporter
 const transporter = nodemailer.createTransport({
-  host: "smtp.office365.com",
-  port: 587,
-  secure: false,
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   auth: {
-    user: "avocarbontest@outlook.com",
-    pass: "fddfkbwyeoymhxqs",
+    user: "sakouhihadil3@gmail.com",
+    pass: "uupm wrml rklh bugg", // Use the app password "uupm wrml rklh bugg"
   },
 });
+// const transporter = nodemailer.createTransport({
+//   host: "smtp.office365.com",
+//   port: 587,
+//   secure: false,
+//   auth: {
+//     user: "administration.sts@avocarbon.com",
+//     pass: "shnlgdyfbcztbhxn",
+//   },
+//   tls: {
+//     rejectUnauthorized: false,
+//   },
+// });
 
-// Send an email // configuration smtp app pwd
-async function sendEmail(to, subject, text) {
+// Test the connection
+transporter.verify(function (error, success) {
+  if (error) {
+    console.log("Error connecting to SMTP server:", error);
+  } else {
+    console.log("Server is ready to take messages");
+  }
+});
+function generateEmailTemplate(subject, message) {
+  const logoBase64 = fs
+    .readFileSync(
+      "C:/Users/hadil.sakouhi/Desktop/versions_HRService/leave_application_Cyclam/backend/emailTemplates/image.png"
+    )
+    .toString("base64");
+
+  return `
+    <html>
+      <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+        <div style="max-width: 600px; margin: auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
+          <header style="text-align: center; margin-bottom: 20px;">
+            <img src="data:image/png;base64,${logoBase64}" alt="Company Logo" style="max-width: 150px;">
+          </header>  
+          <p style="font-size: 16px; line-height: 1.6; color: #555;">${message}</p>
+          <footer style="margin-top: 20px; text-align: center; color: #888; font-size: 10px;">
+            <p>&copy; ${new Date().getFullYear()} Administration STS. All rights reserved.</p>
+          </footer>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+// Send an email with optional attachments
+async function sendEmail(to, subject, text, attachments = []) {
+  const htmlContent = generateEmailTemplate(subject, text);
+
   try {
     await transporter.sendMail({
-      from: '"Administration STS"<avocarbontest@outlook.com>', // Sender's email address
+      from: '"Administration STS" <administration.sts@avocarbon.com>', // Sender's email address
       to,
       subject,
       text,
+      html: htmlContent, // HTML version
+      attachments,
     });
     console.log(`Email sent to ${to}`);
   } catch (error) {
@@ -44,10 +93,10 @@ async function getUserEmailById(userId) {
 }
 
 // Dynamically send an email notification to the approver or employee
-async function sendEmailNotification(userId, subject, message) {
+async function sendEmailNotification(userId, subject, message, details) {
   try {
     const userEmail = await getUserEmailById(userId); // Fetch email by user ID
-    await sendEmail(userEmail, subject, message); // Send the email
+    await sendEmail(userEmail, subject, message, details); // Send the email with attachments if available
   } catch (error) {
     console.error("Error sending notification:", error.message);
   }
