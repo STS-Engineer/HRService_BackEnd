@@ -54,7 +54,7 @@ const createMissionRequest = async (data) => {
       `INSERT INTO mission_requests (
         employee_id, phone, start_date, end_date, mission_budget, purpose_of_travel, destination, departure_time, status, request_date,current_approver_id, next_approver_id,manager_approval_status, plant_manager_approval_status,ceo_approval_status
       ) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8,NOW(), $9, $10,$11,$12,$13,$14) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9 ,NOW(), $10,$11,$12,$13,$14) 
        RETURNING *`,
       [
         employeeId,
