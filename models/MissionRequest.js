@@ -49,6 +49,13 @@ const createMissionRequest = async (data) => {
       currentApproverId = employee.ceo_id;
       nextApproverId = null;
     }
+     // Convert departureTime to only time portion
+    const timeOnly = new Date(departureTime).toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
 
     const res = await pool.query(
       `INSERT INTO mission_requests (
