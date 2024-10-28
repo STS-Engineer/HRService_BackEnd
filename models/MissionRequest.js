@@ -22,6 +22,7 @@ const createMissionRequest = async (data) => {
     missionBudget,
     purposeOfTravel,
     destination,
+    departureTime,
     status = "Pending",
     manager_approval_status = "Pending",
     plant_manager_approval_status = "Pending",
@@ -51,9 +52,9 @@ const createMissionRequest = async (data) => {
 
     const res = await pool.query(
       `INSERT INTO mission_requests (
-        employee_id, phone, start_date, end_date, mission_budget, purpose_of_travel, destination, status, request_date,current_approver_id, next_approver_id,manager_approval_status, plant_manager_approval_status,ceo_approval_status
+        employee_id, phone, start_date, end_date, mission_budget, purpose_of_travel, destination, departure_time, status, request_date,current_approver_id, next_approver_id,manager_approval_status, plant_manager_approval_status,ceo_approval_status
       ) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8,NOW(), $9, $10,$11,$12,$13) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8,NOW(), $9, $10,$11,$12,$13,$14) 
        RETURNING *`,
       [
         employeeId,
@@ -63,6 +64,7 @@ const createMissionRequest = async (data) => {
         missionBudget,
         purposeOfTravel,
         destination,
+        departureTime,
         status,
         currentApproverId,
         nextApproverId,
