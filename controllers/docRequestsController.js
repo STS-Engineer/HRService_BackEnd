@@ -29,24 +29,27 @@ const upload = multer({ storage });
 
 const handleCreateDocumentRequest = async (req, res) => {
   const { employee_id, document_type } = req.body;
+
   try {
+    // Validate inputs
     if (!employee_id || !document_type) {
       return res
         .status(400)
         .json({ error: "Employee ID and Document Type are required" });
     }
-    const request = await createDocumentRequest(
-      employee_id,
-      document_type,
-      req
-    );
-    if (request.next_approver_id) {
+
+    // Create the document request
+    const request = await createDocumentRequest({ employee_id, document_type });
+
+    // Send email notification to the assigned HR Manager
+    if (request.hr_manager_id) {
       await sendEmailNotification(
-        request.next_approver_id,
+        request.hr_manager_id,
         "New Document Request",
-        "A new document request has been submitted needs your approval . Please review the request."
+        `A new document request for ${document_type} has been submitted by employee ID ${employee_id}. Please review the request.`
       );
     }
+
     res.status(201).json(request);
   } catch (error) {
     res.status(500).json({ error: error.message });
