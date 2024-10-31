@@ -36,7 +36,7 @@ transporter.verify(function (error, success) {
 function generateEmailTemplate(subject, message) {
   const logoBase64 = fs
     .readFileSync(
-      "./emailTemplates/image.png"
+      "C:/Users/hadil.sakouhi/Desktop/versions_HRService/leave_application_Cyclam/backend/emailTemplates/image.png"
     )
     .toString("base64");
 
