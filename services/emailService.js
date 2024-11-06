@@ -1,24 +1,16 @@
 const fs = require("fs"); // Add this line
 const nodemailer = require("nodemailer");
 const pool = require("../config/database");
+require("dotenv").config();
 
-//Configure Nodemailer transporter
-// const transporter = nodemailer.createTransport({
-//   host: "smtp.gmail.com",
-//   port: 465,
-//   secure: true,
-//   auth: {
-//     user: "sakouhihadil3@gmail.com",
-//     pass: "uupm wrml rklh bugg", // Use the app password "uupm wrml rklh bugg"
-//   },
-// });
+
 const transporter = nodemailer.createTransport({
   host: "smtp.office365.com",
   port: 587,
   secure: false,
   auth: {
-    user: "administration.sts@avocarbon.com",
-    pass: "shnlgdyfbcztbhxn",
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
   tls: {
     rejectUnauthorized: false,
