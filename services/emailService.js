@@ -28,7 +28,7 @@ transporter.verify(function (error, success) {
 function generateEmailTemplate(subject, message) {
   const logoBase64 = fs
     .readFileSync(
-      "../emailTemplates/image.png"
+      "./emailTemplates/image.png"
     )
     .toString("base64");
 
