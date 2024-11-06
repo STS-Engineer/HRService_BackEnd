@@ -3,27 +3,27 @@ const nodemailer = require("nodemailer");
 const pool = require("../config/database");
 
 //Configure Nodemailer transporter
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: "sakouhihadil3@gmail.com",
-    pass: "uupm wrml rklh bugg", // Use the app password "uupm wrml rklh bugg"
-  },
-});
 // const transporter = nodemailer.createTransport({
-//   host: "smtp.office365.com",
-//   port: 587,
-//   secure: false,
+//   host: "smtp.gmail.com",
+//   port: 465,
+//   secure: true,
 //   auth: {
-//     user: "administration.sts@avocarbon.com",
-//     pass: "shnlgdyfbcztbhxn",
-//   },
-//   tls: {
-//     rejectUnauthorized: false,
+//     user: "sakouhihadil3@gmail.com",
+//     pass: "uupm wrml rklh bugg", // Use the app password "uupm wrml rklh bugg"
 //   },
 // });
+const transporter = nodemailer.createTransport({
+  host: "smtp.office365.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: "administration.sts@avocarbon.com",
+    pass: "shnlgdyfbcztbhxn",
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
 
 // Test the connection
 transporter.verify(function (error, success) {
@@ -36,7 +36,7 @@ transporter.verify(function (error, success) {
 function generateEmailTemplate(subject, message) {
   const logoBase64 = fs
     .readFileSync(
-      "C:/Users/hadil.sakouhi/Desktop/versions_HRService/leave_application_Cyclam/backend/emailTemplates/image.png"
+      "../emailTemplates/image.png"
     )
     .toString("base64");
 
