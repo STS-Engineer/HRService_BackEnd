@@ -2,29 +2,49 @@ const fs = require("fs"); // Add this line
 const nodemailer = require("nodemailer");
 const pool = require("../config/database");
 require("dotenv").config();
+const axios = require("axios");
 
+// Azure OAuth2 authentication to get the access token
+async function getAccessToken() {
+  const tenantId = process.env.AZURE_TENANT_ID; // Use environment variable
+  const clientId = process.env.AZURE_CLIENT_ID; // Use environment variable
+  const clientSecret = process.env.AZURE_CLIENT_SECRET; // Use environment variable
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.office365.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+  // The token URL for Azure AD
+  const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
 
-// Test the connection
-transporter.verify(function (error, success) {
-  if (error) {
-    console.log("Error connecting to SMTP server:", error);
-  } else {
-    console.log("Server is ready to take messages");
+  // Set the data to be sent in the POST request body
+  const data = new URLSearchParams();
+  data.append("grant_type", "client_credentials");
+  data.append("client_id", clientId);
+  data.append("client_secret", clientSecret);
+  data.append("scope", "https://graph.microsoft.com/.default"); // This gives permission to send emails via Outlook
+
+  try {
+    // Send the POST request to Azure AD to obtain the access token
+    const response = await axios.post(url, data);
+    return response.data.access_token; // Return the access token
+  } catch (error) {
+    console.error("Error getting access token:", error);
+    throw error;
   }
-});
+}
+
+
+
+// Create Nodemailer transporter using OAuth2
+async function createTransporter() {
+  const accessToken = await getAccessToken();  // Obtain the access token using the getAccessToken function
+  const userEmail = process.env.SMTP_USER;  
+  return nodemailer.createTransport({
+    service: "hotmail",  // For Outlook (Office365) use 'hotmail'
+    auth: {
+      type: "OAuth2",    // Specify that we are using OAuth2 for authentication
+      user: userEmail,   // Sender's email address
+      accessToken: accessToken,  // Use the access token for authentication
+    },
+  });
+}
 function generateEmailTemplate(subject, message) {
   const logoBase64 = fs
     .readFileSync(
@@ -55,7 +75,7 @@ async function sendEmail(to, subject, text, attachments = []) {
 
   try {
     await transporter.sendMail({
-      from: '"Administration STS" <administration.sts@avocarbon.com>', // Sender's email address
+      from: '"Administration STS" <${process.env.SMTP_USER}>', // Sender's email address
       to,
       subject,
       text,
