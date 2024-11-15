@@ -31,12 +31,12 @@ async function getAccessToken() {
 }
 
 
-
+let transporter;
 // Create Nodemailer transporter using OAuth2
 async function createTransporter() {
   const accessToken = await getAccessToken();  // Obtain the access token using the getAccessToken function
   const userEmail = process.env.SMTP_USER;  
-  return nodemailer.createTransport({
+  transporter = nodemailer.createTransport({
     service: "hotmail",  // For Outlook (Office365) use 'hotmail'
     auth: {
       type: "OAuth2",    // Specify that we are using OAuth2 for authentication
