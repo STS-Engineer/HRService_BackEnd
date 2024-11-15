@@ -25,7 +25,7 @@ async function getAccessToken() {
     const response = await axios.post(url, data);
     return response.data.access_token; // Return the access token
   } catch (error) {
-    console.error("Error getting access token:", error);
+    console.error("Error getting access token:", error.response ? error.response.data : error.message);
     throw error;
   }
 }
