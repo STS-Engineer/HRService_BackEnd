@@ -74,15 +74,22 @@ async function sendEmail(to, subject, text, attachments = []) {
   const htmlContent = generateEmailTemplate(subject, text);
 
   try {
-    await transporter.sendMail({
-      from: '"Administration STS" <${process.env.SMTP_USER}>', // Sender's email address
-      to,
-      subject,
-      text,
-      html: htmlContent, // HTML version
-      attachments,
-    });
-    console.log(`Email sent to ${to}`);
+   if (!transporter) {
+      await createTransporter();
+    }
+    if (transporter) {
+      await transporter.sendMail({
+        from: `"Administration STS" <${process.env.SMTP_USER}>`,
+        to,
+        subject,
+        text,
+        html: htmlContent,
+        attachments,
+      });
+      console.log(`Email sent to ${to}`);
+    } else {
+      throw new Error("Failed to initialize email transporter");
+    }
   } catch (error) {
     console.error("Error sending email", error);
   }
