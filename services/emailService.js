@@ -38,7 +38,9 @@ async function createTransporter() {
   const accessToken = await getAccessToken();  // Obtain the access token using the getAccessToken function
   const userEmail = process.env.SMTP_USER;  
   transporter = nodemailer.createTransport({
-    service: "hotmail",  // For Outlook (Office365) use 'hotmail'
+    service: "smtp.office365.com",
+    post: 587,
+    secure: false,
     auth: {
       type: "OAuth2",    // Specify that we are using OAuth2 for authentication
       user: userEmail,   // Sender's email address
