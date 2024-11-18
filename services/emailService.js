@@ -1,123 +1,135 @@
-const fs = require("fs"); // Add this line
+const fs = require("fs");
 const nodemailer = require("nodemailer");
 const pool = require("../config/database");
 require("dotenv").config();
 const axios = require("axios");
 
-// Azure OAuth2 authentication to get the access token
-async function getAccessToken() {
-  const tenantId = process.env.AZURE_TENANT_ID; // Use environment variable
-  const clientId = process.env.AZURE_CLIENT_ID; // Use environment variable
-  const clientSecret = process.env.AZURE_CLIENT_SECRET; // Use environment variable
+// Cache token to avoid redundant API calls
+let cachedToken = null;
+let tokenExpiryTime = null;
 
-  // The token URL for Azure AD
+// Function to get the Azure OAuth2 access token
+async function getAccessToken() {
+  // Use cached token if it's still valid
+  if (cachedToken && Date.now() < tokenExpiryTime) {
+    return cachedToken;
+  }
+
+  const tenantId = process.env.AZURE_TENANT_ID;
+  const clientId = process.env.AZURE_CLIENT_ID;
+  const clientSecret = process.env.AZURE_CLIENT_SECRET;
+
   const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
 
-  // Set the data to be sent in the POST request body
-  const data = new URLSearchParams();
-  data.append("grant_type", "client_credentials");
-  data.append("client_id", clientId);
-  data.append("client_secret", clientSecret);
-  data.append("scope", "https://graph.microsoft.com/.default"); // This gives permission to send emails via Outlook
+  const data = new URLSearchParams({
+    grant_type: "client_credentials",
+    client_id: clientId,
+    client_secret: clientSecret,
+    scope: "https://graph.microsoft.com/.default",
+  });
 
   try {
-    // Send the POST request to Azure AD to obtain the access token
     const response = await axios.post(url, data);
-    return response.data.access_token; // Return the access token
+    cachedToken = response.data.access_token;
+    tokenExpiryTime = Date.now() + response.data.expires_in * 1000; // Set expiry time
+    return cachedToken;
   } catch (error) {
-    console.error("Error getting access token:", error.response ? error.response.data : error.message);
-    throw error;
+    console.error("Error fetching access token:", error.response?.data || error.message);
+    throw new Error("Failed to fetch Azure access token.");
   }
 }
 
+let transporter = null;
 
-let transporter;
-// Create Nodemailer transporter using OAuth2
+// Function to create the Nodemailer transporter
 async function createTransporter() {
-  const accessToken = await getAccessToken();  // Obtain the access token using the getAccessToken function
-  const userEmail = process.env.SMTP_USER;  
-  transporter = nodemailer.createTransport({
-    service: "hotmail",  // For Outlook (Office365) use 'hotmail'
-    auth: {
-      type: "OAuth2",    // Specify that we are using OAuth2 for authentication
-      user: userEmail,   // Sender's email address
-      accessToken: accessToken,  // Use the access token for authentication
-    },
-  });
+  if (!transporter) {
+    const accessToken = await getAccessToken();
+    transporter = nodemailer.createTransport({
+      host: "smtp.office365.com",
+      port: 587,
+      secure: false,
+      auth: {
+        type: "OAuth2",
+        user: process.env.SMTP_USER,
+        accessToken: accessToken,
+      },
+    });
+  }
 }
+
+// Function to generate an email template
 function generateEmailTemplate(subject, message) {
-  const logoBase64 = fs
-    .readFileSync(
-      "./emailTemplates/image.png"
-    )
-    .toString("base64");
-
-  return `
-    <html>
-      <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
-        <div style="max-width: 600px; margin: auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
-          <header style="text-align: center; margin-bottom: 20px;">
-            <img src="data:image/png;base64,${logoBase64}" alt="Company Logo" style="max-width: 150px;">
-          </header>  
-          <p style="font-size: 16px; line-height: 1.6; color: #555;">${message}</p>
-          <footer style="margin-top: 20px; text-align: center; color: #888; font-size: 10px;">
-            <p>&copy; ${new Date().getFullYear()} Administration STS. All rights reserved.</p>
-          </footer>
-        </div>
-      </body>
-    </html>
-  `;
+  try {
+    const logoBase64 = fs.readFileSync("./emailTemplates/image.png").toString("base64");
+    return `
+      <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="max-width: 600px; margin: auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
+            <header style="text-align: center; margin-bottom: 20px;">
+              <img src="data:image/png;base64,${logoBase64}" alt="Company Logo" style="max-width: 150px;">
+            </header>
+            <p style="font-size: 16px; line-height: 1.6; color: #555;">${message}</p>
+            <footer style="margin-top: 20px; text-align: center; color: #888; font-size: 10px;">
+              <p>&copy; ${new Date().getFullYear()} Administration STS. All rights reserved.</p>
+            </footer>
+          </div>
+        </body>
+      </html>
+    `;
+  } catch (error) {
+    console.error("Error generating email template:", error.message);
+    throw new Error("Failed to generate email template.");
+  }
 }
 
-// Send an email with optional attachments
+// Function to send an email
 async function sendEmail(to, subject, text, attachments = []) {
-  const htmlContent = generateEmailTemplate(subject, text);
-
   try {
-   if (!transporter) {
+    const htmlContent = generateEmailTemplate(subject, text);
+    
+    if (!transporter) {
       await createTransporter();
     }
-    if (transporter) {
-      await transporter.sendMail({
-        from: `"Administration STS" <${process.env.SMTP_USER}>`,
-        to,
-        subject,
-        text,
-        html: htmlContent,
-        attachments,
-      });
-      console.log(`Email sent to ${to}`);
-    } else {
-      throw new Error("Failed to initialize email transporter");
-    }
+
+    await transporter.sendMail({
+      from: `"Administration STS" <${process.env.SMTP_USER}>`,
+      to,
+      subject,
+      text,
+      html: htmlContent,
+      attachments,
+    });
+
+    console.log(`Email sent to ${to}`);
   } catch (error) {
-    console.error("Error sending email", error);
+    console.error("Error sending email:", error.message);
+    throw new Error("Failed to send email.");
   }
 }
 
 // Fetch user email by user ID
 async function getUserEmailById(userId) {
   try {
-    const result = await pool.query("SELECT email FROM users WHERE id = $1", [
-      userId,
-    ]);
+    const result = await pool.query("SELECT email FROM users WHERE id = $1", [userId]);
     if (result.rows.length === 0) {
       throw new Error(`No user found with ID ${userId}`);
     }
     return result.rows[0].email;
   } catch (error) {
     console.error("Error fetching user email:", error.message);
-    throw error;
+    throw new Error("Failed to fetch user email.");
   }
 }
 
-// Dynamically send an email notification to the approver or employee
-async function sendEmailNotification(userId, subject, message, details) {
+// Dynamically send an email notification
+async function sendEmailNotification(userId, subject, message, attachments = []) {
   try {
-    const userEmail = await getUserEmailById(userId); // Fetch email by user ID
-    await sendEmail(userEmail, subject, message, details); // Send the email with attachments if available
+    const userEmail = await getUserEmailById(userId);
+    await sendEmail(userEmail, subject, message, attachments);
   } catch (error) {
-    console.error("Error sending notification:", error.message);
+    console.error("Error sending email notification:", error.message);
+    throw new Error("Failed to send email notification.");
   }
 }
 
