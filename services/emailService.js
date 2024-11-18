@@ -8,7 +8,7 @@ const axios = require("axios");
 async function getAccessToken() {
   const tenantId = process.env.AZURE_TENANT_ID; // Use environment variable
   const clientId = process.env.AZURE_CLIENT_ID; // Use environment variable
-  const clientSecret = process.env.AZURE_CLIENT_SECRET; // Use environment variable
+  const clientSecret = process.env.AZURE_CLIENT_SECRET  ? "Present" : "Missing"; // Use environment variable
 
   // The token URL for Azure AD
   const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
