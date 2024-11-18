@@ -79,7 +79,7 @@ async function sendEmail(to, subject, text, attachments = []) {
     }
     if (transporter) {
       await transporter.sendMail({
-        from: `"Administration STS" <${process.env.SMTP_USER}>`,
+        from: `"Administration STS"<administration.sts@avocarbon.com>`,
         to,
         subject,
         text,
