@@ -52,8 +52,8 @@ async function createTransporter() {
   console.log("Access Token for Transporter:", accessToken);
 
   transporter = nodemailer.createTransport({
-    service: "smtp.office365.com",
-    post: 587,
+    host: "smtp.office365.com",
+    port: 587,
     secure: false,
     auth: {
       type: "OAuth2", // Specify that we are using OAuth2 for authentication
