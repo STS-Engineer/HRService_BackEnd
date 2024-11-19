@@ -60,6 +60,8 @@ async function createTransporter() {
       user: userEmail, // Sender's email address
       accessToken: accessToken, // Use the access token for authentication
     },
+    logger: true,
+    debug: true,
   });
 
   console.log("Transporter created successfully!");
