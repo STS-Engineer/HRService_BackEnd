@@ -16,7 +16,7 @@ async function getAccessToken() {
   console.log("Client Secret:", clientSecret ? "Present" : "Missing");
 
   // The token URL for Azure AD
-  const url = https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token;
+  const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
 
   console.log("Token URL:", url);
 
