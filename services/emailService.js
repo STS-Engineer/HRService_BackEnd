@@ -110,7 +110,7 @@ async function sendEmail(to, subject, text, attachments = []) {
       html: htmlContent,
       attachments,
     });
-    console.log(Email sent to ${to});
+    console.log(`Email sent to ${to}`);
   } catch (error) {
     console.error("Error sending email:", error.message);
   }
@@ -122,8 +122,8 @@ async function getUserEmailById(userId) {
   try {
     const result = await pool.query("SELECT email FROM users WHERE id = $1", [userId]);
     if (result.rows.length === 0) {
-      console.error(No user found with ID ${userId});
-      throw new Error(No user found with ID ${userId});
+      console.error(`No user found with ID ${userId}`);
+      throw new Error(`No user found with ID ${userId}`);
     }
     console.log("User email fetched successfully:", result.rows[0].email);
     return result.rows[0].email;
