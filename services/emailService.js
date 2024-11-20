@@ -72,21 +72,21 @@ function generateEmailTemplate(subject, message) {
   const logoBase64 = fs.readFileSync("./emailTemplates/image.png").toString("base64");
   console.log("Logo read successfully!");
 
-  return 
-    <html>
-      <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
-        <div style="max-width: 600px; margin: auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
-          <header style="text-align: center; margin-bottom: 20px;">
-            <img src="data:image/png;base64,${logoBase64}" alt="Company Logo" style="max-width: 150px;">
-          </header>  
-          <p style="font-size: 16px; line-height: 1.6; color: #555;">${message}</p>
-          <footer style="margin-top: 20px; text-align: center; color: #888; font-size: 10px;">
-            <p>&copy; ${new Date().getFullYear()} Administration STS. All rights reserved.</p>
-          </footer>
-        </div>
-      </body>
-    </html>
-  ;
+  return `
+      <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="max-width: 600px; margin: auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
+            <header style="text-align: center; margin-bottom: 20px;">
+              <img src="data:image/png;base64,${logoBase64}" alt="Company Logo" style="max-width: 150px;">
+            </header>  
+            <p style="font-size: 16px; line-height: 1.6; color: #555;">${message}</p>
+            <footer style="margin-top: 20px; text-align: center; color: #888; font-size: 10px;">
+              <p>&copy; ${new Date().getFullYear()} Administration STS. All rights reserved.</p>
+            </footer>
+          </div>
+        </body>
+      </html>
+    `;
 }
 
 // Send an email with optional attachments
