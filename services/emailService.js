@@ -103,7 +103,7 @@ async function sendEmail(to, subject, text, attachments = []) {
     }
     console.log("Sending email...");
     await transporter.sendMail({
-      from: "Administration STS"<administration.sts@avocarbon.com>,
+      from: `"Administration" <${process.env.SMTP_USER}>`,
       to,
       subject,
       text,
