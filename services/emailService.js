@@ -33,7 +33,14 @@ async function getAccessToken() {
     // Send the POST request to Azure AD to obtain the access token
     const response = await axios.post(url, data);
     console.log("Access Token Response:", response.data);
-    return response.data.access_token; // Return the access token
+   // Check if the access token is returned
+    if (response.data && response.data.access_token) {
+      console.log("Access Token Generated Successfully:", response.data.access_token);
+      return response.data.access_token; // Return the access token
+    } else {
+      console.error("Access token not found in response.");
+      throw new Error("Access token not found in response.");
+    }
   } catch (error) {
     console.error("Error getting access token:", error.response ? error.response.data : error.message);
     throw error;
