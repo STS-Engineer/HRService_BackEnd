@@ -3,7 +3,7 @@ const { EmailClient } = require("@azure/communication-email");
 const pool = require("../config/database");
 
 // Initialize the EmailClient with your ACS connection string
-const connectionString = "https://hrservice.europe.communication.azure.com/;accesskey=EMcBQRMfWYpcjX75RJUTUDM9daBXythPo0vTqKJzuymCRrC4ivtpJQQJ99ALACULyCpgP8RjAAAAAZCSlUY0";
+const connectionString = "https://hrservice.europe.communication.azure.com/;accesskey=9vPNXEOx16zVtIrQFhnMfdRUOgLvSMfJRxOygYMgTkegmzM1bxpmJQQJ99ALACULyCpgP8RjAAAAAZCSmXVt";
 const emailClient = new EmailClient(connectionString);
 
 // Generate the email template with the company logo
