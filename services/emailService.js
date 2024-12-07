@@ -15,13 +15,13 @@ const pool = require("../config/database");
 const transporter = nodemailer.createTransport({
   host: "smtp.office365.com",
   port: 587,
-  secure: false,
+  secureConnection: false,
   auth: {
     user: "administration.sts@avocarbon.com",
     pass: "Fuf657433",
   },
   tls: {
-    rejectUnauthorized: false,
+    ciphers: 'SSLv3'  
   },
 });
 
