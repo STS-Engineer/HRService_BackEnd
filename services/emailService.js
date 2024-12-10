@@ -1,12 +1,38 @@
-const fs = require("fs");
-const { EmailClient } = require("@azure/communication-email");
+const fs = require("fs"); // Add this line
+const nodemailer = require("nodemailer");
 const pool = require("../config/database");
 
-// Initialize the EmailClient with your ACS connection string
-const connectionString = "https://hrservice.europe.communication.azure.com/;accesskey=9vPNXEOx16zVtIrQFhnMfdRUOgLvSMfJRxOygYMgTkegmzM1bxpmJQQJ99ALACULyCpgP8RjAAAAAZCSmXVt";
-const emailClient = new EmailClient(connectionString);
+//Configure Nodemailer transporter
+// const transporter = nodemailer.createTransport({
+//   host: "smtp.gmail.com",
+//   port: 465,
+//   secure: true,
+//   auth: {
+//     user: "sakouhihadil3@gmail.com",
+//     pass: "uupm wrml rklh bugg", // Use the app password "uupm wrml rklh bugg"
+//   },
+// });
+const transporter = nodemailer.createTransport({
+  host: "smtp.office365.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: "administration.sts@avocarbon.com",
+    pass: "shnlgdyfbcztbhxn",
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
 
-// Generate the email template with the company logo
+// Test the connection
+transporter.verify(function (error, success) {
+  if (error) {
+    console.log("Error connecting to SMTP server:", error);
+  } else {
+    console.log("Server is ready to take messages");
+  }
+});
 function generateEmailTemplate(subject, message) {
   const logoBase64 = fs
     .readFileSync("./emailTemplates/image.png")
@@ -18,7 +44,7 @@ function generateEmailTemplate(subject, message) {
         <div style="max-width: 600px; margin: auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
           <header style="text-align: center; margin-bottom: 20px;">
             <img src="data:image/png;base64,${logoBase64}" alt="Company Logo" style="max-width: 150px;">
-          </header>
+          </header>  
           <p style="font-size: 16px; line-height: 1.6; color: #555;">${message}</p>
           <footer style="margin-top: 20px; text-align: center; color: #888; font-size: 10px;">
             <p>&copy; ${new Date().getFullYear()} Administration STS. All rights reserved.</p>
@@ -34,22 +60,14 @@ async function sendEmail(to, subject, text, attachments = []) {
   const htmlContent = generateEmailTemplate(subject, text);
 
   try {
-    // Prepare the email message object
-    const emailMessage = {
-      sender: "administration.sts@avocarbon.com", // Sender's email address
-      content: {
-        subject,
-        plainText: text,
-        html: htmlContent, // HTML version
-      },
-      recipients: {
-        to: to.map((email) => ({ email })), // Format recipients correctly
-      },
-      attachments, // Attachments array
-    };
-
-    // Send the email
-    const response = await emailClient.send(emailMessage);
+    await transporter.sendMail({
+      from: '"Administration STS" <administration.sts@avocarbon.com>', // Sender's email address
+      to,
+      subject,
+      text,
+      html: htmlContent, // HTML version
+      attachments,
+    });
     console.log(`Email sent to ${to}`);
   } catch (error) {
     console.error("Error sending email", error);
@@ -76,7 +94,7 @@ async function getUserEmailById(userId) {
 async function sendEmailNotification(userId, subject, message, details) {
   try {
     const userEmail = await getUserEmailById(userId); // Fetch email by user ID
-    await sendEmail([userEmail], subject, message, details); // Send the email with attachments if available
+    await sendEmail(userEmail, subject, message, details); // Send the email with attachments if available
   } catch (error) {
     console.error("Error sending notification:", error.message);
   }
