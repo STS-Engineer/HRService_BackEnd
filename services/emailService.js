@@ -2,16 +2,7 @@ const fs = require("fs"); // Add this line
 const nodemailer = require("nodemailer");
 const pool = require("../config/database");
 
-//Configure Nodemailer transporter
-// const transporter = nodemailer.createTransport({
-//   host: "smtp.gmail.com",
-//   port: 465,
-//   secure: true,
-//   auth: {
-//     user: "sakouhihadil3@gmail.com",
-//     pass: "uupm wrml rklh bugg", // Use the app password "uupm wrml rklh bugg"
-//   },
-// });
+
 const transporter = nodemailer.createTransport({
   host: "smtp.office365.com",
   port: 587,
