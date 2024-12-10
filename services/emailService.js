@@ -18,7 +18,7 @@ const transporter = nodemailer.createTransport({
   secure: false,
   auth: {
     user: "administration.sts@avocarbon.com",
-    pass: "vtmhvkbyvlgdvjcj",
+    pass: "nztpjywqclxkkncn",
   },
   tls: {
     rejectUnauthorized: false,
