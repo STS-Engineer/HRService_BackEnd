@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false,
   auth: {
-    user: "administration.sts@avocarbon.com",
+    user: "administration.STS@avocarbon.com",
     pass: "nztpjywqclxkkncn",
   },
   tls: {
