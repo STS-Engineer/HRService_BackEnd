@@ -4,7 +4,7 @@ const pool = require("../config/database");
 
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.avocarbon.com",
+  host: "smtp.office365.com",
   port: 587,
   secure: false,
   auth: {
