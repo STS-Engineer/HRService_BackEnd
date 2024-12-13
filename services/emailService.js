@@ -43,6 +43,14 @@ function generateEmailTemplate(subject, message) {
 async function sendEmail(to, subject, text, attachments = []) {
   const htmlContent = generateEmailTemplate(subject, text);
 
+  console.log("Preparing to send email with the following details:");
+  console.log(`To: ${to}`);
+  console.log(`Subject: ${subject}`);
+  console.log(`Text: ${text}`);
+  console.log("HTML Content:");
+  console.log(htmlContent);
+  console.log("Attachments:", attachments);
+
   try {
     await transporter.sendMail({
       from: '"Administration STS" <administration.sts@avocarbon.com>', // Sender's email address
