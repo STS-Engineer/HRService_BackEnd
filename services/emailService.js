@@ -10,6 +10,7 @@ const transporter = nodemailer.createTransport({
     user: "administration.sts@avocarbon.com", // Your email
     pass: "shnlgdyfbcztbhxn", // Use the app password here
   },
+  debug: true,
 });
 // Test the connection
 transporter.verify(function (error, success) {
