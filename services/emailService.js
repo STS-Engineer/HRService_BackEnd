@@ -4,14 +4,14 @@ const pool = require("../config/database");
 
 const transporter = nodemailer.createTransport({
   host: "avocarbon-com.mail.protection.outlook.com",
-  port: 25,
-  secure: false,
+  port: 587,
+  secure: false,  // false for TLS
   auth: {
-    user: "administration.sts@avocarbon.com", // Your email
-    pass: "shnlgdyfbcztbhxn", // Use the app password here
+    user: "administration.sts@avocarbon.com",
+    pass: "shnlgdyfbcztbhxn",
   },
-  debug: true,
 });
+
 // Test the connection
 transporter.verify(function (error, success) {
   if (error) {
@@ -66,6 +66,7 @@ async function sendEmail(to, subject, text, attachments = []) {
     console.error("Error sending email", error);
   }
 }
+
 // Fetch user email by user ID
 async function getUserEmailById(userId) {
   try {
