@@ -4,8 +4,8 @@ const pool = require("../config/database");
 
 const transporter = nodemailer.createTransport({
   host: "avocarbon-com.mail.protection.outlook.com",
-  port: 587,
-  secure: false,  // false for TLS
+  port: 465,
+  secure: true,  // false for TLS
   auth: {
     user: "administration.sts@avocarbon.com",
     pass: "shnlgdyfbcztbhxn",
