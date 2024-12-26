@@ -48,7 +48,7 @@ async function sendEmail(to, subject, text, attachments = []) {
 
   try {
     await transporter.sendMail({
-      from: '"Administration STS" <administration.STS@avocarbon.com>', // Sender's email address
+      from: 'administration.STS@avocarbon.com', // Sender's email address
       to,
       subject,
       text,
