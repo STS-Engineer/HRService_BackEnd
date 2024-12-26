@@ -7,7 +7,7 @@ const transporter = nodemailer.createTransport({
   port: 25 ,
   secure: false,
   auth: {
-    user: "administration.STS@avocarbon.com",
+    user: "administration.sts@avocarbon.com",
     pass: "shnlgdyfbcztbhxn",
   },
 });
@@ -48,7 +48,7 @@ async function sendEmail(to, subject, text, attachments = []) {
 
   try {
     await transporter.sendMail({
-      from: 'administration.STS@avocarbon.com', // Sender's email address
+      from: 'administration.sts@avocarbon.com', // Sender's email address
       to,
       subject,
       text,
