@@ -19,7 +19,7 @@ const getEmployeesByPlant = async (req, res) => {
 
     // Fetch employees that belong to the given plant connection
     const { rows } = await pool.query(
-      "SELECT * FROM users WHERE plant_connection = $1",
+      "SELECT * FROM users WHERE plant_connection = $1 ORDER BY id ASC",
       [plant]
     );
 

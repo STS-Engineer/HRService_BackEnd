@@ -145,22 +145,32 @@ const updateLeaveRequestStatus = async (req, res) => {
 
     // For Manager role
     if (role === "MANAGER" && leaveRequest.employee_id !== userId) {
-      // This part handles when a Manager is reviewing someone else's leave request
+      // Manager reviews someone else's leave request
       if (leaveRequest.manager_approval_status === "Pending") {
         leaveRequest.manager_approval_status = status;
 
         if (status === "Approved") {
-          leaveRequest.plant_manager_approval_status = "Pending";
-          leaveRequest.status = "Under Plant Manager Review"; // Update status for overall process
-
-          // Notify Plant Manager
-          await sendEmailNotification(
-            leaveRequest.next_approver_id,
-            "Leave Request Approval Needed",
-            "A leave request from  has been approved by the Manager and is awaiting your approval."
-          );
+          // Check if there's no Plant Manager
+          if (!leaveRequest.plant_manager_approval_status) {
+            // Finalize the approval directly
+            leaveRequest.status = "Approved";
+            await sendEmailNotification(
+              leaveRequest.employee_id,
+              "Leave Request Approved",
+              "Your leave request has been approved by the Manager."
+            );
+          } else {
+            // Plant Manager will review next
+            leaveRequest.plant_manager_approval_status = "Pending";
+            leaveRequest.status = "Under Plant Manager Review";
+            await sendEmailNotification(
+              leaveRequest.next_approver_id,
+              "Leave Request Approval Needed",
+              "A leave request has been approved by the Manager and is awaiting your approval."
+            );
+          }
         } else {
-          // If rejected by Manager, update status to Refused
+          // If rejected by Manager
           leaveRequest.status = "Rejected";
           await sendEmailNotification(
             leaveRequest.employee_id,
@@ -170,15 +180,13 @@ const updateLeaveRequestStatus = async (req, res) => {
         }
       }
     }
-    // When the Manager applies for a leave request (Manager is the employee)
-    else if (role === "MANAGER" && leaveRequest.employee_id === userId) {
-      // Automatically move to Plant Manager review when a Manager applies
 
+    // When the Manager applies for a leave request
+    else if (role === "MANAGER" && leaveRequest.employee_id === userId) {
+      // Automatically move to Plant Manager review
       leaveRequest.manager_approval_status = "Approved";
       leaveRequest.plant_manager_approval_status = "Pending";
-      leaveRequest.status = "Under Plant Manager Review"; // Update status
-
-      // Notify Plant Manager
+      leaveRequest.status = "Under Plant Manager Review";
       await sendEmailNotification(
         leaveRequest.next_approver_id,
         "Leave Request Approval Needed",
@@ -186,16 +194,14 @@ const updateLeaveRequestStatus = async (req, res) => {
       );
     }
 
-    // For Plant Manager role ()
+    // For Plant Manager role
     else if (role === "PLANT_MANAGER") {
-      if (
-        leaveRequest.manager_approval_status === "Approved" &&
-        leaveRequest.plant_manager_approval_status === "Pending"
-      ) {
+      // Check if the Manager is not involved or has approved
+      if (!leaveRequest.manager_approval_status || leaveRequest.manager_approval_status === "Approved") {
         leaveRequest.plant_manager_approval_status = status;
 
         if (status === "Approved") {
-          // If approved by Plant Manager, finalize status to Approved
+          // Finalize the approval
           leaveRequest.status = "Approved";
           leaveRequest.current_approver_id = null;
           await sendEmailNotification(
@@ -204,31 +210,7 @@ const updateLeaveRequestStatus = async (req, res) => {
             "Your leave request has been approved by the Plant Manager."
           );
         } else {
-          // If rejected by Plant Manager, update status to Refused
-          leaveRequest.status = "Rejected";
-          await sendEmailNotification(
-            leaveRequest.employee_id,
-            "Leave Request Rejected",
-            "Your leave request has been rejected by the Plant Manager."
-          );
-        }
-      } else if (
-        leaveRequest.manager_approval_status === "Pending" &&
-        leaveRequest.plant_manager_approval_status === "Pending"
-      ) {
-        leaveRequest.plant_manager_approval_status = status;
-
-        if (status === "Approved") {
-          // If approved by Plant Manager, finalize status to Approved
-          leaveRequest.status = "Approved";
-          leaveRequest.current_approver_id = null;
-          await sendEmailNotification(
-            leaveRequest.employee_id,
-            "Leave Request Approved",
-            "Your leave request has been approved by the Plant Manager."
-          );
-        } else {
-          // If rejected by Plant Manager, update status to Refused
+          // If rejected by Plant Manager
           leaveRequest.status = "Rejected";
           await sendEmailNotification(
             leaveRequest.employee_id,
@@ -238,6 +220,7 @@ const updateLeaveRequestStatus = async (req, res) => {
         }
       }
     }
+
     // For CEO role
     else if (role === "CEO") {
       if (
@@ -248,7 +231,7 @@ const updateLeaveRequestStatus = async (req, res) => {
         leaveRequest.ceo_approval_status = status;
 
         if (status === "Approved") {
-          // If approved by CEO, finalize status to Approved
+          // Finalize the approval
           leaveRequest.status = "Approved";
           leaveRequest.current_approver_id = null;
           await sendEmailNotification(
@@ -257,7 +240,7 @@ const updateLeaveRequestStatus = async (req, res) => {
             "Your leave request has been approved by the CEO."
           );
         } else {
-          // If rejected by CEO, update status to Refused
+          // If rejected by CEO
           leaveRequest.status = "Rejected";
           await sendEmailNotification(
             leaveRequest.employee_id,
@@ -267,13 +250,15 @@ const updateLeaveRequestStatus = async (req, res) => {
         }
       }
     }
-    // Update the leave request with new status
+
+    // Update the leave request with the new status
     const updatedLeaveRequest = await updateLeaveRequest(id, leaveRequest);
     res.status(200).json(updatedLeaveRequest);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const removeLeaveRequest = async (req, res) => {
   const id = req.params.id;
