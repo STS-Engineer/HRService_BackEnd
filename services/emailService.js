@@ -1,44 +1,11 @@
-const fs = require("fs"); // Add this line
+const fs = require("fs");
 const nodemailer = require("nodemailer");
 const pool = require("../config/database");
 
-<<<<<<< HEAD
-//Configure Nodemailer transporter
-
-// const transporter = nodemailer.createTransport({
-//   host: "smtp.gmail.com",
-//   port: 465,
-//   secure: true,
-//   auth: {
-//     user: "sakouhihadil3@gmail.com",
-//     pass: "uupm wrml rklh bugg", // Use the app password "uupm wrml rklh bugg"
-//   },
-// });
-const transporter = nodemailer.createTransport({
-  host: "smtp.office365.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: "administration.sts@avocarbon.com",
-    pass: "nztpjywqclxkkncn",
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
-// const transporter = nodemailer.createTransport({
-//   host: "avocarbon-com.mail.protection.outlook.com",
-//   port: 25,
-//   secure: false,
-//   auth: {
-//     user: "administration.sts@avocarbon.com", // Your email
-//     pass: "shnlgdyfbcztbhxn", // Use the app password here
-//   },
-// });
-=======
+// Configure Nodemailer transporter
 const transporter = nodemailer.createTransport({
   host: "avocarbon-com.mail.protection.outlook.com",
-  port: 25 ,
+  port: 25,
   secure: false,
   auth: {
     user: "administration.sts@avocarbon.com",
@@ -46,7 +13,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
->>>>>>> e6625257f6a2117b916e20ba35f12f9a96cc3439
 // Test the connection
 transporter.verify(function (error, success) {
   if (error) {
@@ -55,25 +21,17 @@ transporter.verify(function (error, success) {
     console.log("Server is ready to take messages");
   }
 });
-function generateEmailTemplate(subject, message) {
-<<<<<<< HEAD
-  const logoBase64 = fs
-    .readFileSync("./emailTemplates/image.png")
-    .toString("base64");
-  github;
 
-=======
->>>>>>> e6625257f6a2117b916e20ba35f12f9a96cc3439
+// Generate an email template with a logo
+function generateEmailTemplate(subject, message) {
+  const logoBase64 = fs.readFileSync("./emailTemplates/image.png").toString("base64");
   return `
     <html>
       <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
         <div style="max-width: 600px; margin: auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
-<<<<<<< HEAD
           <header style="text-align: center; margin-bottom: 20px;">
             <img src="data:image/png;base64,${logoBase64}" alt="Company Logo" style="max-width: 150px;">
           </header>
-=======
->>>>>>> e6625257f6a2117b916e20ba35f12f9a96cc3439
           <p style="font-size: 16px; line-height: 1.6; color: #555;">${message}</p>
           <footer style="margin-top: 20px; text-align: center; color: #888; font-size: 10px;">
             <p>&copy; ${new Date().getFullYear()} Administration STS. All rights reserved.</p>
@@ -83,25 +41,18 @@ function generateEmailTemplate(subject, message) {
     </html>
   `;
 }
+
 // Send an email with optional attachments
 async function sendEmail(to, subject, text, attachments = []) {
   const htmlContent = generateEmailTemplate(subject, text);
 
-  console.log("Preparing to send email with the following details:");
-  console.log(`To: ${to}`);
-  console.log(`Subject: ${subject}`);
-  console.log(`Text: ${text}`);
-  console.log("HTML Content:");
-  console.log(htmlContent);
-  console.log("Attachments:", attachments);
-
   try {
     await transporter.sendMail({
-      from: 'administration.sts@avocarbon.com', // Sender's email address
+      from: "administration.sts@avocarbon.com",
       to,
       subject,
       text,
-      html: htmlContent, // HTML version
+      html: htmlContent,
       attachments,
     });
     console.log(`Email sent to ${to}`);
@@ -109,12 +60,11 @@ async function sendEmail(to, subject, text, attachments = []) {
     console.error("Error sending email", error);
   }
 }
+
 // Fetch user email by user ID
 async function getUserEmailById(userId) {
   try {
-    const result = await pool.query("SELECT email FROM users WHERE id = $1", [
-      userId,
-    ]);
+    const result = await pool.query("SELECT email FROM users WHERE id = $1", [userId]);
     if (result.rows.length === 0) {
       throw new Error(`No user found with ID ${userId}`);
     }
@@ -124,11 +74,12 @@ async function getUserEmailById(userId) {
     throw error;
   }
 }
+
 // Dynamically send an email notification to the approver or employee
 async function sendEmailNotification(userId, subject, message, details) {
   try {
-    const userEmail = await getUserEmailById(userId); // Fetch email by user ID
-    await sendEmail(userEmail, subject, message, details); // Send the email with attachments if available
+    const userEmail = await getUserEmailById(userId);
+    await sendEmail(userEmail, subject, message, details);
   } catch (error) {
     console.error("Error sending notification:", error.message);
   }
