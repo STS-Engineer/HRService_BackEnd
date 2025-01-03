@@ -1,4 +1,5 @@
 const pool = require("../config/database");
+const dayjs = require("dayjs");
 
 // Check if employee exists
 const employeeExists = async (employeeId) => {
@@ -17,7 +18,6 @@ const createLeaveRequest = async (data) => {
     employeeId,
     phone,
     leaveType,
-    requestDate,
     startDate,
     endDate,
     justification,
@@ -29,6 +29,9 @@ const createLeaveRequest = async (data) => {
   } = data;
 
   try {
+    // Generate the current date for requestDate
+    const requestDate = new Date().toISOString().split("T")[0]; // Format as 'YYYY-MM-DD'
+
     // Check if the employee exists
     const employeeRes = await pool.query("SELECT * FROM users WHERE id = $1", [
       employeeId,

@@ -4,39 +4,45 @@ const fs = require("fs");
 
 // Function to create a new document request
 const createDocumentRequest = async (data) => {
-  const { employeeId, documentType } = data;
+  const { employee_id, document_type } = data;
 
   try {
-    // Check if the employee exists
+    // Fetch employee details, including plant connection
     const employeeRes = await pool.query("SELECT * FROM users WHERE id = $1", [
-      employeeId,
+      employee_id,
     ]);
+
+    // Throw error if employee doesn't exist
     if (employeeRes.rows.length === 0) {
-      throw new Error(`Employee with ID ${employeeId} does not exist.`);
+      throw new Error(`Employee with ID ${employee_id} does not exist.`);
     }
+
     const employee = employeeRes.rows[0];
 
-    // Determine the current and next approver
-    let currentApproverId, nextApproverId;
-    if (employee.manager_id) {
-      currentApproverId = employee.manager_id;
-      nextApproverId = employee.plant_manager_id;
-    } else if (employee.plant_manager_id) {
-      currentApproverId = employee.plant_manager_id;
-      nextApproverId = employee.ceo_id;
-    } else {
-      currentApproverId = employee.ceo_id;
-      nextApproverId = null; // If CEO is the final approver, no next approver
-    }
-
-    // Insert the document request with currentApproverId and nextApproverId
-    const res = await pool.query(
-      `INSERT INTO document_requests (employee_id, document_type, current_approver_id, next_approver_id) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING *`,
-      [employeeId, documentType, currentApproverId, nextApproverId]
+    // Find the HR Manager for the employee's plant_connection
+    const hrManagerRes = await pool.query(
+      "SELECT * FROM users WHERE plant_connection = $1 AND role = 'HRMANAGER'",
+      [employee.plant_connection]
     );
 
+    // Throw error if no HR Manager is found for the employee's plant
+    if (hrManagerRes.rows.length === 0) {
+      throw new Error(
+        `No HR Manager found for the plant: ${employee.plant_connection}`
+      );
+    }
+
+    const hrManager = hrManagerRes.rows[0];
+
+    // Insert the new document request and assign it to the HR Manager
+    const res = await pool.query(
+      `INSERT INTO document_requests (employee_id, document_type, hr_manager_id, status) 
+       VALUES ($1, $2, $3, 'Pending') 
+       RETURNING *`,
+      [employee_id, document_type, hrManager.id]
+    );
+
+    // Return the newly created document request
     return res.rows[0];
   } catch (error) {
     throw new Error(`Error creating document request: ${error.message}`);
@@ -50,6 +56,12 @@ const getDocumentRequestById = async (id) => {
       "SELECT * FROM document_requests WHERE id = $1",
       [id]
     );
+
+    // Check if the request was found
+    if (res.rows.length === 0) {
+      throw new Error(`Document request with ID ${id} does not exist.`);
+    }
+
     return res.rows[0];
   } catch (error) {
     throw new Error(`Error fetching document request: ${error.message}`);
@@ -58,56 +70,81 @@ const getDocumentRequestById = async (id) => {
 
 // Function to get document requests for an employee
 const getDocumentRequestsByEmployee = async (employee_id) => {
-  const result = await pool.query(
-    "SELECT * FROM document_requests WHERE employee_id = $1",
-    [employee_id]
-  );
-  return result.rows;
+  try {
+    const result = await pool.query(
+      "SELECT * FROM document_requests WHERE employee_id = $1",
+      [employee_id]
+    );
+    return result.rows;
+  } catch (error) {
+    throw new Error(
+      `Error fetching employee document requests: ${error.message}`
+    );
+  }
 };
 
-// Function to get all document requests
-const getDocumentRequests = async (approverId) => {
+// Function to get document requests for HR Manager
+const getDocumentRequestsForHRManager = async (hr_manager_id) => {
   try {
-    const query = `SELECT 
+    // Step 1: Get the plant_connection for the HR Manager
+    const hrManagerQuery = await pool.query(
+      "SELECT plant_connection FROM users WHERE id = $1 AND role = 'HRMANAGER'",
+      [hr_manager_id]
+    );
+
+    // Check if HR Manager exists and has a plant_connection
+    if (hrManagerQuery.rowCount === 0) {
+      throw new Error(
+        "HR Manager not found or does not have a plant connection."
+      );
+    }
+
+    const { plant_connection } = hrManagerQuery.rows[0];
+
+    // Step 2: Fetch document requests for employees in the same plant
+    const query = `
+      SELECT 
         dr.id AS requestId,
         dr.document_type AS documentType,
         dr.status,
-        dr.file_path AS filePath,
         dr.request_date AS requestDate,
-        dr.current_approver_id AS currentApproverId,
-        dr.next_approver_id AS nextApproverId
-        u.id AS employeeId,
+        dr.employee_id AS employeeId,
         u.firstname AS firstName,
         u.lastname AS lastName,
         u.function,
         u.department
-     FROM document_requests dr
-     JOIN users u ON dr.employee_id = u.id
-     WHERE dr.current_approver_id = $1 OR dr.next_approver_id = $1
-     ORDER BY dr.created_at DESC;`;
-    const res = await pool.query(query, [approverId]);
+      FROM document_requests dr
+      JOIN users u ON dr.employee_id = u.id
+      WHERE u.plant_connection = $1
+      ORDER BY dr.created_at DESC;`;
+
+    const res = await pool.query(query, [plant_connection]);
     return res.rows;
   } catch (error) {
-    throw new Error(`Error fetching document requests: ${error.message}`);
+    throw new Error(
+      `Error fetching document requests for HR Manager: ${error.message}`
+    );
   }
 };
 
+// Function to get all document requests
 const getAllDocumentRequests = async () => {
   try {
     const query = `SELECT 
-    dr.id AS requestId,
-    dr.document_type AS documentType,
-    dr.status,
-    dr.file_path AS filePath,
-    dr.request_date AS requestDate,
-    u.id AS employeeId,
-    u.firstname AS firstName,
-    u.lastname AS lastName,
-    u.function,
-    u.department
- FROM document_requests dr
- JOIN users u ON dr.employee_id = u.id
- ORDER BY dr.created_at DESC;`;
+      dr.id AS requestId,
+      dr.document_type AS documentType,
+      dr.status,
+      dr.file_path AS filePath,
+      dr.request_date AS requestDate,
+      u.id AS employeeId,
+      u.firstname AS firstName,
+      u.lastname AS lastName,
+      u.function,
+      u.department
+      FROM document_requests dr
+      JOIN users u ON dr.employee_id = u.id
+      ORDER BY dr.created_at DESC;`;
+
     const res = await pool.query(query);
     return res.rows;
   } catch (error) {
@@ -115,31 +152,34 @@ const getAllDocumentRequests = async () => {
   }
 };
 
-// Function to update a document request with the uploaded file (with approver validation)
-const uploadDocument = async (id, approverId, fileName) => {
+// Function for HR Manager to upload document and update request
+const uploadDocumentForRequest = async (
+  documentRequestId,
+  file_path,
+  hr_manager_id
+) => {
   try {
-    // Check if the approver is the current approver
-    const requestCheck = await pool.query(
-      "SELECT current_approver_id FROM document_requests WHERE id = $1",
-      [id]
+    // First, fetch the document request to ensure the HR Manager is authorized to update it
+    const requestRes = await pool.query(
+      "SELECT * FROM document_requests WHERE id = $1 AND hr_manager_id = $2",
+      [documentRequestId, hr_manager_id]
     );
 
-    if (requestCheck.rows.length === 0) {
-      throw new Error("Document request not found.");
+    if (requestRes.rows.length === 0) {
+      throw new Error(
+        "Document request not found or not assigned to this HR Manager."
+      );
     }
 
-    const { current_approver_id } = requestCheck.rows[0];
-    if (current_approver_id !== approverId) {
-      throw new Error("You are not authorized to upload this document.");
-    }
-
-    // Proceed with file upload if the approver is authorized
-    const result = await pool.query(
-      "UPDATE document_requests SET file_path = $1, status = $2 WHERE id = $3 RETURNING *",
-      [fileName, "Completed", id]
+    // Update the request with the uploaded document and change status to 'Completed'
+    const updateRes = await pool.query(
+      `UPDATE document_requests 
+       SET file_path = $1, status = 'Completed', completed_at = NOW() 
+       WHERE id = $2 RETURNING *`,
+      [file_path, documentRequestId]
     );
 
-    return result.rows[0];
+    return updateRes.rows[0];
   } catch (error) {
     throw new Error(`Error uploading document: ${error.message}`);
   }
@@ -152,6 +192,12 @@ const deleteDocumentRequest = async (id) => {
       "DELETE FROM document_requests WHERE id = $1 RETURNING *",
       [id]
     );
+
+    // Check if the request was deleted
+    if (result.rows.length === 0) {
+      throw new Error(`Document request with ID ${id} does not exist.`);
+    }
+
     return result.rows[0];
   } catch (error) {
     throw new Error(`Error deleting document request: ${error.message}`);
@@ -167,9 +213,9 @@ module.exports = {
   createDocumentRequest,
   getDocumentRequestsByEmployee,
   getAllDocumentRequests,
-  getDocumentRequests,
+  getDocumentRequestsForHRManager,
   getDocumentRequestById,
-  uploadDocument,
+  uploadDocumentForRequest,
   deleteDocumentRequest,
   getDocumentFilePath,
 };

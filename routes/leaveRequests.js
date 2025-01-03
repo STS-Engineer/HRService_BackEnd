@@ -14,7 +14,6 @@ const {
   getHighLeavePercentageByYear,
 } = require("../controllers/leaveRequestsController");
 const { authenticate } = require("../middleware/authenticateToken");
-
 // POST request to create a leave request
 router.post("/", authenticate, addLeaveRequest);
 //GET All leave requests to fetch all leave requests

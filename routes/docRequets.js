@@ -5,31 +5,55 @@ const {
   handleGetDocumentRequestsByEmployee,
   handleGetAllDocumentRequests,
   handleDocumentRequestById,
-  handleUploadDocument,
+  uploadDocumentController,
+  getDocumentRequestsForHRManagerController,
+  fetchDocumentRequests,
   handleDeleteDocumentRequest,
+  uploadDocumentForRequestController,
   handleDownloadDocument,
+  upload,
 } = require("../controllers/docRequestsController");
 const { authenticate } = require("../middleware/authenticateToken");
 
 // Create a new document request
 router.post("/", authenticate, handleCreateDocumentRequest);
 
-// Get all document requests (for managers)
-router.get("/", handleGetAllDocumentRequests);
+// Get all document requests for the logged-in user (e.g., manager)
+router.get("/my-requests", authenticate, fetchDocumentRequests);
+
+// Get all document requests (for admin or HR)
+router.get("/all", authenticate, handleGetAllDocumentRequests);
+
+router.get(
+  "/hr-manager-requests",
+  authenticate,
+  getDocumentRequestsForHRManagerController
+);
+
+// Download a document by file name
+router.get("/download/:fileName", authenticate, handleDownloadDocument);
+
+// Upload a document for a request by ID
+router.post(
+  "/upload/:id",
+  authenticate,
+  upload.single("documentFilet"),
+  uploadDocumentForRequestController
+);
 
 // Get document requests by employee ID
-router.get("/:employee_id", handleGetDocumentRequestsByEmployee);
+router.get(
+  "/employee/:employee_id",
+  authenticate,
+  handleGetDocumentRequestsByEmployee
+);
 
-// Get a document request by ID
-router.get("/:id", handleDocumentRequestById);
+// Get a document request by document request ID
+router.get("/:id", authenticate, handleDocumentRequestById);
 
-// Upload a document for a request
-router.post("/upload/:id", handleUploadDocument);
+// Delete a document request by ID
+router.delete("/:id", authenticate, handleDeleteDocumentRequest);
 
-// Delete a document request
-router.delete("/:id", handleDeleteDocumentRequest);
-
-// Download a document
-router.get("/download/:fileName", handleDownloadDocument);
+router.post("/upload", authenticate, uploadDocumentController);
 
 module.exports = router;

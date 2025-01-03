@@ -5,36 +5,50 @@ const moment = require("moment");
 exports.getRequestsPerEmployee = async (req, res) => {
   try {
     const { plant } = req.user;
+    const { employeeID } = req.query; // Get employeeID from query parameters
+
+    // Base condition for WHERE clause
+    let employeeCondition = "";
+    const queryParams = [plant];
+
+    if (employeeID) {
+      // Add employeeID condition if provided
+      employeeCondition = " AND u.id = $2";
+      queryParams.push(employeeID);
+    }
 
     // Query to count total leave requests per employee
     const leaveQuery = `
       SELECT u.id AS employee_id, u.firstname, u.lastname, COUNT(lr.id) AS total_requests
       FROM users u
       LEFT JOIN leave_requests lr ON u.id = lr.employee_id
-      WHERE u.plant_connection = $1
+      WHERE u.plant_connection = $1${employeeCondition}
       GROUP BY u.id;
     `;
-    const leaveRequests = await pool.query(leaveQuery, [plant]);
+    const leaveRequests = await pool.query(leaveQuery, queryParams);
 
     // Query to count total mission requests per employee
     const missionQuery = `
       SELECT u.id AS employee_id, u.firstname, u.lastname, COUNT(mr.id) AS total_requests
       FROM users u
       LEFT JOIN mission_requests mr ON u.id = mr.employee_id
-      WHERE u.plant_connection = $1
+      WHERE u.plant_connection = $1${employeeCondition}
       GROUP BY u.id;
     `;
-    const missionRequests = await pool.query(missionQuery, [plant]);
+    const missionRequests = await pool.query(missionQuery, queryParams);
 
     // Query to count total authorization requests per employee
     const authorizationQuery = `
       SELECT u.id AS employee_id, u.firstname, u.lastname, COUNT(ar.id) AS total_requests
       FROM users u
       LEFT JOIN authorization_requests ar ON u.id = ar.employee_id
-      WHERE u.plant_connection = $1
+      WHERE u.plant_connection = $1${employeeCondition}
       GROUP BY u.id;
     `;
-    const authorizationRequests = await pool.query(authorizationQuery, [plant]);
+    const authorizationRequests = await pool.query(
+      authorizationQuery,
+      queryParams
+    );
 
     // Combine all results
     const allRequests = [

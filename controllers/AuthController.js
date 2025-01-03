@@ -49,6 +49,7 @@ const getUserById = async (req, res) => {
 };
 const registerUser = async (req, res) => {
   const {
+    id,
     firstname,
     lastname,
     function: userFunction,
@@ -79,9 +80,10 @@ const registerUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
-      `INSERT INTO users (firstname, lastname, function, department, email, password, role, plant_connection)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      `INSERT INTO users (id,firstname, lastname, function, department, email, password, role, plant_connection)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9) RETURNING *`,
       [
+        id,
         firstname,
         lastname,
         userFunction,
@@ -100,7 +102,7 @@ const registerUser = async (req, res) => {
   }
 };
 const loginUser = async (req, res) => {
-  const { email, password, plant_connection } = req.body;
+  const { email, password, plant_connection, rememberMe } = req.body;
 
   try {
     const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [
@@ -149,8 +151,9 @@ const loginUser = async (req, res) => {
         plant: userPlant,
       },
     };
+    const tokenExpiry = rememberMe ? "7d" : "24h";
 
-    jwt.sign(payload, "jwtSecret", { expiresIn: "10h" }, (err, token) => {
+    jwt.sign(payload, "jwtSecret", { expiresIn: tokenExpiry }, (err, token) => {
       if (err) throw err;
       res.json({ token, user: payload.user });
     });
