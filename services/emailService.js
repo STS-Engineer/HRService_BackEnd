@@ -1,7 +1,6 @@
 const fs = require("fs");
 const nodemailer = require("nodemailer");
 const pool = require("../config/database");
-
 // Configure Nodemailer transporter
 const transporter = nodemailer.createTransport({
   host: "avocarbon-com.mail.protection.outlook.com",
