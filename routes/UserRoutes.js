@@ -13,6 +13,6 @@ router.get("/users", authenticate, getAllUsers);
 router.get("/users/:id", authenticate, getUserById);
 router.post("/users", authenticate, createUser);
 router.put("/users/:id", authenticate, updateUser);
-router.delete("/users/:id", authenticate, deleteUser);
+router.delete("/users/:id", authenticate, (req, res) => deleteUser(req, res));
 
 module.exports = router;
