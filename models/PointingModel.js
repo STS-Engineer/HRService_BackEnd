@@ -24,7 +24,7 @@ const getPointingLogs = async ({ employeeId, startDate, endDate }) => {
   const whereClause = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
 
   const query = `
-    SELECT p.*, u.firstname, u.lastname, u.department
+    SELECT p.*, u.firstname, u.lastname
     FROM pointing p
     INNER JOIN users u ON p.employee_id = u.id
     ${whereClause}
