@@ -23,5 +23,6 @@ router.get("/device/:pointeuse_id", getUsersByDevice);
 router.post("/", addEmployeeToPointeuse);
 // Route to remove an employee from a pointeuse
 router.delete("/:employeeId", deleteEmployeeFromPointeuse);
+router.delete("/users/:id", authenticate, (req, res) => deleteUser(req, res));
 
 module.exports = router;

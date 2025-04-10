@@ -48,6 +48,7 @@ const getPointingLogs = async ({ employeeId, startDate, endDate }) => {
         THEN 'Late' 
         ELSE 'On Time' 
       END AS late_status
+    SELECT p.*, u.firstname, u.lastname
     FROM pointing p
     INNER JOIN users u ON p.employee_id = u.id
     ${whereClause}
