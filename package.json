@@ -33,13 +33,9 @@
     "pg": "^8.12.0",
     "recharts": "^2.12.7",
     "socket.io": "^4.7.5",
-<<<<<<< HEAD
-    "zkteco-js": "^1.7.0"
-=======
     "zkteco-js": "^1.7.0",
     "dotenv": "^16.0.0",
     "node-fetch": "^3.3.0",
     "axios": "^1.3.0"
->>>>>>> 80cedbae0a2d52da7cc6707c58cacf4e26d5cdbd
   }
 }
