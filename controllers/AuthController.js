@@ -69,6 +69,7 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
+    // Check if email already exists
     const emailCheck = await pool.query(
       "SELECT * FROM users WHERE email = $1",
       [trimmedEmail]
@@ -77,17 +78,37 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ error: "Email already exists" });
     }
 
+    // 🔹 Get or Insert the department
+    let departmentResult = await pool.query(
+      "SELECT id FROM departments WHERE name = $1",
+      [department]
+    );
+
+    let department_id;
+    if (departmentResult.rows.length === 0) {
+      // If department doesn't exist, create it
+      const insertDepartment = await pool.query(
+        "INSERT INTO departments (name) VALUES ($1) RETURNING id",
+        [department]
+      );
+      department_id = insertDepartment.rows[0].id;
+    } else {
+      department_id = departmentResult.rows[0].id;
+    }
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Insert new user with department_id
     const result = await pool.query(
-      `INSERT INTO users (id,firstname, lastname, function, department, email, password, role, plant_connection)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9) RETURNING *`,
+      `INSERT INTO users (id, firstname, lastname, function, department_id, email, password, role, plant_connection)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [
         id,
         firstname,
         lastname,
         userFunction,
-        department,
+        department_id,
         email,
         hashedPassword,
         role,
@@ -97,10 +118,11 @@ const registerUser = async (req, res) => {
 
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error(err);
+    console.error("Error registering user:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 const loginUser = async (req, res) => {
   const { email, password, plant_connection, rememberMe } = req.body;
 

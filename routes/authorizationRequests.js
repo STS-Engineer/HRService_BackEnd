@@ -8,6 +8,8 @@ const {
   fetchAuthorizationRequestsByEmployeeId,
   deleteAuthorizationRequestById,
   updateAuthorizationRequestStatus,
+  calculateAuthorizationHours,
+  calculateAuthorizationHoursAutomatically,
 } = require("../controllers/authRequestsController");
 const { authenticate } = require("../middleware/authenticateToken");
 
@@ -31,5 +33,9 @@ router.patch("/:id", authenticate, updateAuthorizationRequestStatus);
 
 // Route to delete an authorization request by ID
 router.delete("/:id", authenticate, deleteAuthorizationRequestById);
+router.post(
+  "/calculate-authorization-hours",
+  calculateAuthorizationHoursAutomatically
+);
 
 module.exports = router;

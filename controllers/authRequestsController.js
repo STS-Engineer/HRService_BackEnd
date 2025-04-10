@@ -250,6 +250,79 @@ const fetchAllAuthorizationRequests = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+const calculateAuthorizationHours = (req, res) => {
+  const { departure_time, return_time } = req.body;
+
+  // Validate if both departure_time and return_time are provided
+  if (!departure_time || !return_time) {
+    return res.status(400).json({
+      message: "Please provide both departure_time and return_time.",
+    });
+  }
+
+  try {
+    // Parse the departure and return times using moment.js
+    const departure = moment(departure_time);
+    const returnTime = moment(return_time);
+
+    // Check if the times are valid
+    if (!departure.isValid() || !returnTime.isValid()) {
+      return res.status(400).json({
+        message: "Invalid date format. Please use a valid date-time format.",
+      });
+    }
+
+    // Calculate the difference in hours (true returns fractional hours)
+    const hoursDifference = returnTime.diff(departure, "hours", true);
+
+    // Send the response with the calculated hours
+    res.status(200).json({
+      message: "Calculation successful",
+      hours: hoursDifference,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "An error occurred while calculating the hours.",
+      error: error.message,
+    });
+  }
+};
+const calculateAuthorizationHoursAutomatically = async (req, res) => {
+  try {
+    // Fetch all authorization requests from the database
+    const authorizationRequests = await AuthorizationRequest.find();
+
+    // Loop through each record and calculate the hours
+    for (const request of authorizationRequests) {
+      const { departure_time, return_time } = request;
+
+      if (departure_time && return_time) {
+        const departure = moment(departure_time);
+        const returnTime = moment(return_time);
+
+        // Check if the times are valid
+        if (departure.isValid() && returnTime.isValid()) {
+          // Calculate the difference in hours (true returns fractional hours)
+          const hoursDifference = returnTime.diff(departure, "hours", true);
+
+          // Update the record with the calculated hours
+          request.hours = hoursDifference;
+          await request.save(); // Save the updated record to the database
+        }
+      }
+    }
+
+    res.status(200).json({
+      message:
+        "Hours calculated and updated successfully for all authorization requests.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "An error occurred while calculating the hours.",
+      error: error.message,
+    });
+  }
+};
 
 module.exports = {
   addAuthorizationRequest,
@@ -259,4 +332,6 @@ module.exports = {
   fetchAuthorizationRequestsByEmployeeId,
   updateAuthorizationRequestStatus,
   deleteAuthorizationRequestById,
+  calculateAuthorizationHours,
+  calculateAuthorizationHoursAutomatically,
 };

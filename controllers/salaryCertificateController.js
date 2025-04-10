@@ -1,5 +1,5 @@
 const SalaryCertificate = require("../models/salaryCertificateModel"); // Your model file
-// const { sendEmailNotification } = require("../services/emailService"); // Import your email service
+const { sendEmailNotification } = require("../services/emailService"); // Import your email service
 const pool = require("../config/database");
 
 const createSalaryCertificate = async (req, res) => {

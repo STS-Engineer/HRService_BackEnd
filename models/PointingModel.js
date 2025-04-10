@@ -17,21 +17,50 @@ const insertPointingLog = async (employeeId, logTime, status) => {
 // Function to retrieve logs from the database
 const getPointingLogs = async ({ employeeId, startDate, endDate }) => {
   const filters = [];
-  if (employeeId) filters.push(`employee_id = ${employeeId}`);
-  if (startDate) filters.push(`log_time >= '${startDate}'`);
-  if (endDate) filters.push(`log_time <= '${endDate}'`);
+  const params = [];
+  let paramIndex = 1;
+
+  if (employeeId) {
+    filters.push(`employee_id = $${paramIndex}`);
+    params.push(employeeId);
+    paramIndex++;
+  }
+  if (startDate) {
+    filters.push(`log_time >= $${paramIndex}`);
+    params.push(startDate);
+    paramIndex++;
+  }
+  if (endDate) {
+    filters.push(`log_time <= $${paramIndex}`);
+    params.push(endDate);
+    paramIndex++;
+  }
 
   const whereClause = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
 
   const query = `
-    SELECT p.*, u.firstname, u.lastname, u.department
+    SELECT 
+      p.*, 
+      u.firstname, 
+      u.lastname,
+      CASE 
+        WHEN p.status = 'IN' AND (DATE_PART('hour', p.log_time) > 8 OR (DATE_PART('hour', p.log_time) = 8 AND DATE_PART('minute', p.log_time) > 30))
+        THEN 'Late' 
+        ELSE 'On Time' 
+      END AS late_status
     FROM pointing p
     INNER JOIN users u ON p.employee_id = u.id
     ${whereClause}
-    ORDER BY log_time DESC
+    ORDER BY p.log_time DESC;
   `;
-  const result = await pool.query(query);
-  return result.rows;
+
+  try {
+    const result = await pool.query(query, params);
+    return result.rows;
+  } catch (error) {
+    console.error("Database error in getPointingLogs:", error);
+    throw new Error("Failed to fetch pointing logs from the database.");
+  }
 };
 
 const updatePointingStatuses = async () => {
@@ -39,11 +68,11 @@ const updatePointingStatuses = async () => {
     WITH time_comparison AS (
         SELECT 
             employee_id,
-            log_time::DATE AS date,  -- Extract only the date part from log_time
-            MIN(log_time) AS in_time,  -- Earliest log_time for IN status
-            MAX(log_time) AS out_time  -- Latest log_time for OUT status
+            log_time::DATE AS date,  
+            MIN(log_time) AS in_time,  
+            MAX(log_time) AS out_time  
         FROM pointing
-        GROUP BY employee_id, log_time::DATE  -- Group by employee and date
+        GROUP BY employee_id, log_time::DATE  
     )
     UPDATE pointing p
     SET status = CASE 
@@ -206,11 +235,17 @@ const getDeviceById = async (id) => {
   const result = await pool.query(query, [id]);
   return result.rows[0];
 };
-const addDevice = async (deviceIp, deviceName = null) => {
+const addDevice = async (deviceIp, deviceName = "Unknown") => {
   const query =
-    "INSERT INTO Pointeuses (device_name,device_ip) VALUES ($1,$2) RETURNING *";
-  const result = await pool.query(query, [deviceName, deviceIp]);
-  return result.rows[0];
+    "INSERT INTO pointeuses (device_name, device_ip) VALUES ($1, $2) RETURNING *";
+  try {
+    const result = await pool.query(query, [deviceName, deviceIp]);
+    return result.rows[0]; // Return the added device
+  } catch (error) {
+    // Log the detailed error
+    console.error("Database Error in addDevice:", error.message);
+    throw new Error("Database query failed");
+  }
 };
 const fetchLogsByPlantManager = async (plantManagerId) => {
   const query = `
@@ -234,6 +269,7 @@ const getLogsByPointeuse = async (pointeuseId) => {
   const result = await pool.query(query, [pointeuseId]);
   return result.rows;
 };
+
 module.exports = {
   insertPointingLog,
   getPointingLogs,

@@ -52,25 +52,29 @@ const createUser = async (req, res) => {
     firstname,
     lastname,
     function: userFunction,
-    department,
     email,
     role,
+    department_id,
+    line_id,
+    shift_id,
   } = req.body;
   const password = "defaultPassword"; // Set a default password for new employees
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const { rows } = await pool.query(
-      `INSERT INTO users (firstname, lastname, function, department, email, password, role)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      `INSERT INTO users (firstname, lastname, function, email, password, role , department_id , line_id , shift_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [
         firstname,
         lastname,
         userFunction,
-        department,
         email,
         hashedPassword,
         role,
+        department_id,
+        line_id,
+        shift_id,
       ]
     );
     res.status(201).json(rows[0]);
@@ -129,6 +133,79 @@ const deleteUser = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+const getUsersByDevice = async (req, res) => {
+  try {
+    const { pointeuse_id } = req.params; // Extract pointeuse_id from request parameters
+
+    const { rows } = await pool.query(
+      "SELECT * FROM users WHERE pointeuse_id = $1",
+      [pointeuse_id]
+    );
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Error fetching users by pointeuse_id:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const addEmployeeToPointeuse = async (req, res) => {
+  const {
+    firstname,
+    lastname,
+    function: userFunction,
+    email,
+    role,
+    department_id,
+    line_id,
+    shift_id,
+    pointeuse_id, // Added pointeuse_id
+  } = req.body;
+  const password = "defaultPassword"; // Set a default password for new employees
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const { rows } = await pool.query(
+      `INSERT INTO users (firstname, lastname, function, email, password, role, department_id, line_id, shift_id, pointeuse_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [
+        firstname,
+        lastname,
+        userFunction,
+        email,
+        hashedPassword,
+        role,
+        department_id,
+        line_id,
+        shift_id,
+        pointeuse_id, // Added pointeuse_id
+      ]
+    );
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    console.error("Error creating user:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+const deleteEmployeeFromPointeuse = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    const deleteResult = await pool.query(
+      "DELETE FROM users WHERE id = $1 RETURNING *",
+      [employeeId]
+    );
+
+    if (deleteResult.rowCount === 0) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    res.json({ message: "Employee deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting employee:", error);
+    res.status(500).json({ message: "Failed to delete employee" });
+  }
+};
 
 module.exports = {
   getAllUsers,
@@ -137,4 +214,7 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  getUsersByDevice,
+  addEmployeeToPointeuse,
+  deleteEmployeeFromPointeuse,
 };

@@ -11,6 +11,7 @@ const userRoutes = require("./routes/UserRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const languageMiddleware = require("./middleware/languageMiddleware");
 const pointingRoutes = require("./routes/pointingRoutes");
+const horairesRoutes = require("./routes/horairesRoutes");
 const nodemailer = require("nodemailer"); // Add nodemailer for SMTP connection
 const router = express.Router();
 
@@ -70,6 +71,7 @@ app.use("/document-requests", docRequestsRouter);
 app.use("/salary-certificates", salaryCertificateRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/pointing", pointingRoutes);
+app.use("/horaires", horairesRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

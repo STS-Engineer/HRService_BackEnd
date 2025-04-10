@@ -13,15 +13,27 @@ const createUser = (userData) => {
     firstname,
     lastname,
     function: userFunction,
-    department,
     email,
     password,
     role,
+    department_id,
+    line_id,
+    shift_id,
   } = userData;
   return pool.query(
-    `INSERT INTO users (firstname, lastname, function, department, email, password, role)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [firstname, lastname, userFunction, department, email, password, role]
+    `INSERT INTO users (firstname, lastname, function, email, password, role , department_id,line_id,shift_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7 , $8 , $9) RETURNING *`,
+    [
+      firstname,
+      lastname,
+      userFunction,
+      email,
+      password,
+      role,
+      department_id,
+      line_id,
+      shift_id,
+    ]
   );
 };
 
@@ -31,14 +43,24 @@ const updateUser = (id, userData) => {
     lastname,
     function: userFunction,
     department,
+    department_id,
     email,
     role,
   } = userData;
   return pool.query(
     `UPDATE users 
-     SET firstname = $1, lastname = $2, function = $3, department = $4, email = $5, role = $6 
-     WHERE id = $7 RETURNING *`,
-    [firstname, lastname, userFunction, department, email, role, id]
+     SET firstname = $1, lastname = $2, function = $3, department = $4, email = $5, role = $6 , department_id = $7 ,
+     WHERE id = $8 RETURNING *`,
+    [
+      firstname,
+      lastname,
+      userFunction,
+      department,
+      department_id,
+      email,
+      role,
+      id,
+    ]
   );
 };
 
